@@ -646,7 +646,7 @@ extern List build_job_queue(bool clear_start, bool backfill)
 
 /*
  * job_is_completing - Determine if jobs are in the process of completing.
- * IN/OUT  eff_cg_bitmap - optional bitmap of all relevent completing nodes,
+ * IN/OUT  eff_cg_bitmap - optional bitmap of all relevant completing nodes,
  *                         relevenace determined by filtering via CompleteWait
  *                         if NULL, function will terminate at first completing
  *                         job
@@ -4692,7 +4692,7 @@ extern List feature_list_copy(List feature_list_src)
  * AND (not XAND), as if they were surrounded by parentheses within the
  * brackets.
  *
- * As an output: if mutiple changeable features are requested,
+ * As an output: if multiple changeable features are requested,
  * and bar (OR) was requested, then set this to true.
  *
  * This is needed for the scheduling logic with parentheses and matching OR.

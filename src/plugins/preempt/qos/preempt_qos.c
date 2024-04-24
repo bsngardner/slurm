@@ -1,5 +1,5 @@
 /*****************************************************************************\
- *  preempt_qos.c - job preemption plugin that selects preemptable
+ *  preempt_qos.c - job preemption plugin that selects preemptible
  *  jobs based upon their Quality Of Service (QOS).
  *****************************************************************************
  *  Copyright (C) 2009-2010 Lawrence Livermore National Security.

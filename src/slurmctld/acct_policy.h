@@ -176,13 +176,13 @@ extern uint32_t acct_policy_get_prio_thresh(job_record_t *job_ptr,
 					    bool assoc_mgr_locked);
 
 /*
- * acct_policy_get_preemptable_time - get the time the job becomes preemptable
+ * acct_policy_get_preemptable_time - get the time the job becomes preemptible
  * 	based on conf and qos PreemptExemptTime
  */
 extern time_t acct_policy_get_preemptable_time(job_record_t *job_ptr);
 
 /*
- * acct_policy_is_job_preemptable - Check if job is preemptable checking
+ * acct_policy_is_job_preemptable - Check if job is preemptible checking
  * 	global conf and qos options PreemptExemptTime
  * 	returns true if job is *exempt* from preemption
  */

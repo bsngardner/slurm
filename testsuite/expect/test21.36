@@ -32,10 +32,10 @@ set cluster          [get_config_param "ClusterName"]
 set account          "$test_name\_acct"
 set user             "$test_name\_user"
 
-# Account requirments
+# Account requirements
 set acct_req(cluster) $cluster
 
-# User requirments
+# User requirements
 set user_req(account) $account
 set user_req(cluster) $cluster
 

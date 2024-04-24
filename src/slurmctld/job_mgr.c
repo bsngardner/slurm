@@ -1118,7 +1118,7 @@ extern void set_job_failed_assoc_qos_ptr(job_record_t *job_ptr)
 		slurmdb_assoc_rec_t assoc_rec;
 		memset(&assoc_rec, 0, sizeof(assoc_rec));
 		/*
-		 * For speed and accurracy we will first see if we once had an
+		 * For speed and accuracy we will first see if we once had an
 		 * association record.  If not look for it by
 		 * account,partition, user_id.
 		 */
@@ -2444,7 +2444,7 @@ extern int job_mgr_load_job_state(buf_t *buffer,
 	memset(&assoc_rec, 0, sizeof(assoc_rec));
 
 	/*
-	 * For speed and accurracy we will first see if we once had an
+	 * For speed and accuracy we will first see if we once had an
 	 * association record.  If not look for it by
 	 * account,partition, user_id.
 	 */
@@ -4628,7 +4628,7 @@ extern void rehash_jobs(void)
 
 /* Create an exact copy of an existing job record for a job array.
  * IN job_ptr - META job record for a job array, which is to become an
- *		individial task of the job array.
+ *		individual task of the job array.
  *		Set the job's array_task_id to the task to be split out.
  * RET - The new job record, which is the new META job record. */
 extern job_record_t *job_array_split(job_record_t *job_ptr)
@@ -4954,7 +4954,7 @@ extern job_record_t *job_array_split(job_record_t *job_ptr)
 	return job_ptr_pend;
 }
 
-/* Add job array data stucture to the job record */
+/* Add job array data structure to the job record */
 static void _create_job_array(job_record_t *job_ptr, job_desc_msg_t *job_desc)
 {
 	job_details_t *details;
@@ -6712,7 +6712,7 @@ extern int job_str_signal(char *job_id_str, uint16_t signal, uint16_t flags,
 				srun_allocate_abort(job_ptr);
 				job_completion_logger(job_ptr, false);
 				/*
-				 * Master job record, even wihtout tasks,
+				 * Master job record, even without tasks,
 				 * counts as one job record
 				 */
 				job_count -= (orig_task_cnt - 1);
@@ -7668,7 +7668,7 @@ static int _valid_job_part(job_desc_msg_t *job_desc, uid_t submit_uid,
 
 	/* Validate job limits against partition limits */
 
-	/* Check Partition with the highest limits when there are muliple */
+	/* Check Partition with the highest limits when there are multiple */
 	if (job_desc->min_nodes == NO_VAL) {
 		/* Avoid setting the job request to 0 nodes unless requested */
 		if (!min_nodes_orig)
@@ -10641,7 +10641,7 @@ static int _validate_job_desc(job_desc_msg_t *job_desc_msg, int allocate,
 		}
 		dup_job_ptr = find_job_record(job_desc_msg->job_id);
 		if (dup_job_ptr) {
-			info("attempt to re-use active %pJ", dup_job_ptr);
+			info("attempt to reuse active %pJ", dup_job_ptr);
 			return ESLURM_DUPLICATE_JOB_ID;
 		}
 	}
@@ -12274,7 +12274,7 @@ void purge_old_job(void)
 			continue;
 		if (test_job_dependency(job_ptr, NULL) == FAIL_DEPEND) {
 			/* Check what are the job disposition
-			 * to deal with invalid dependecies
+			 * to deal with invalid dependencies
 			 */
 			handle_invalid_dependency(job_ptr);
 		}
@@ -18889,7 +18889,7 @@ extern int update_job_wckey(char *module, job_record_t *job_ptr,
 }
 
 /*
- * Currently only sends active and suspsended jobs not already in the datbase.
+ * Currently only sends active and suspsended jobs not already in the database.
  *
  * On node changes, we opt not to send updated node_inx's due to the heavy cost
  * of doing so. If we were to update the job's node_inx's, this could be done by
@@ -19141,7 +19141,7 @@ extern bool job_hold_requeue(job_record_t *job_ptr)
 	/*
 	 * A job may be canceled during its epilog in which case we need to
 	 * check that the job (or base job in the case of an array) was not
-	 * canceled before attemping to requeue.
+	 * canceled before attempting to requeue.
 	 */
 	if (IS_JOB_CANCELLED(job_ptr) ||
 	    (((job_ptr->array_task_id != NO_VAL) || job_ptr->array_recs) &&
@@ -19327,7 +19327,7 @@ static void _set_job_requeue_exit_value(job_record_t *job_ptr)
 {
 	int exit_code;
 
-	/* --no-requeue option supercedes config for RequeueExit &
+	/* --no-requeue option supersedes config for RequeueExit &
 	 * RequeueExitHold
 	 */
 	if (job_ptr->details && !job_ptr->details->requeue)
@@ -19577,7 +19577,7 @@ extern void update_job_fed_details(job_record_t *job_ptr)
  *
  * IN resp - allocation response being sent back to client.
  * IN job_ptr - allocated job
- * IN req_cluster - the cluster requsting the allocation info.
+ * IN req_cluster - the cluster requesting the allocation info.
  */
 extern void set_remote_working_response(
 	resource_allocation_response_msg_t *resp,

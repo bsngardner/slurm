@@ -154,7 +154,7 @@ static void _update_wckeys(ctxt_t *ctxt, bool commit)
 
 	if (!dwckeys) {
 		resp_warn(ctxt, __func__,
-			  "ignoring empty or non-existant wckeys array for update");
+			  "ignoring empty or non-existent wckeys array for update");
 		goto cleanup;
 	}
 

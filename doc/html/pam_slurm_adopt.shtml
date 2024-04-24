@@ -201,8 +201,8 @@ account    required      pam_access.so
 
 <p>
 Flipping this order, with pam_access(sufficient) before
-pam_slurm_adopt(reqired), members of the administrative group will bypass
-pam_slurm_adopt entierly.
+pam_slurm_adopt(required), members of the administrative group will bypass
+pam_slurm_adopt entirely.
 </p>
 
 <pre>
@@ -225,7 +225,7 @@ account    required      pam_slurm_adopt.so
 
 <p>
 More information about the capabilities and configuration options for pam_access
-and pam_listfile can be found in their respecive man pages.
+and pam_listfile can be found in their respective man pages.
 </p>
 
 <h2 id="OPTIONS">pam_slurm_adopt Module Options

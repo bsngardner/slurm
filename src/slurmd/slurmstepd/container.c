@@ -684,7 +684,7 @@ static char *_get_config_path(stepd_step_rec_t *step)
 
 	xassert(c->magic == STEP_CONTAINER_MAGIC);
 
-	/* OCI runtime spec reqires config.json to be in root of bundle */
+	/* OCI runtime spec requires config.json to be in root of bundle */
 	xstrfmtcat(path, "%s/config.json", c->bundle);
 
 	return path;

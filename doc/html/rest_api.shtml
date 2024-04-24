@@ -12726,7 +12726,7 @@
 
       <div class="param-desc"><span class="param-type">Query Parameter</span> — Include deleted users default: null </div><div class="param">with_assocs (optional)</div>
 
-      <div class="param-desc"><span class="param-type">Query Parameter</span> — Include assocations default: null </div><div class="param">with_coords (optional)</div>
+      <div class="param-desc"><span class="param-type">Query Parameter</span> — Include associations default: null </div><div class="param">with_coords (optional)</div>
 
       <div class="param-desc"><span class="param-type">Query Parameter</span> — Include coordinators default: null </div><div class="param">with_wckeys (optional)</div>
 
@@ -14907,7 +14907,7 @@
     <h3><a name="v0.0.40_assoc_shares_obj_wrap"><code>v0.0.40_assoc_shares_obj_wrap</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class="model-description"></div>
     <div class="field-items">
-      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> assocation id format: int32</div>
+      <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> association id format: int32</div>
 <div class="param">cluster (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> cluster name </div>
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> share name </div>
 <div class="param">parent (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> parent name </div>
@@ -14931,7 +14931,7 @@
       <div class="param">account (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Association account (if assigned) </div>
 <div class="param">cluster (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Association cluster (if assigned) </div>
 <div class="param">partition (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Association partition (if assigned) </div>
-<div class="param">user </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Assocation user (if assigned) </div>
+<div class="param">user </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Association user (if assigned) </div>
 <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> Numeric Association ID (if known) format: int32</div>
     </div>  <!-- field-items -->
   </div>
@@ -15617,7 +15617,7 @@
       <div class="param">results (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_job_array_response_msg_entry">array[v0.0.40_job_array_response_msg_entry]</a></span>  </div>
 <div class="param">job_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> First updated JobId - Use results instead </div>
 <div class="param">step_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> First updated StepID - Use results instead </div>
-<div class="param">job_submit_user_msg (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> First updated Job submision user message - Use results instead </div>
+<div class="param">job_submit_user_msg (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> First updated Job submission user message - Use results instead </div>
 <div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_meta">v0.0.40_openapi_meta</a></span>  </div>
 <div class="param">errors (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_error">array[v0.0.40_openapi_error]</a></span>  </div>
 <div class="param">warnings (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_warning">array[v0.0.40_openapi_warning]</a></span>  </div>
@@ -15628,9 +15628,9 @@
     <div class="model-description"></div>
     <div class="field-items">
       <div class="param">result (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_job_submit_response_msg">v0.0.40_job_submit_response_msg</a></span>  </div>
-<div class="param">job_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> submited JobId format: int32</div>
-<div class="param">step_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> submited StepID </div>
-<div class="param">job_submit_user_msg (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> job submision user message </div>
+<div class="param">job_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> submitted JobId format: int32</div>
+<div class="param">step_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> submitted StepID </div>
+<div class="param">job_submit_user_msg (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> job submission user message </div>
 <div class="param">meta (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_meta">v0.0.40_openapi_meta</a></span>  </div>
 <div class="param">errors (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_error">array[v0.0.40_openapi_error]</a></span>  </div>
 <div class="param">warnings (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_openapi_warning">array[v0.0.40_openapi_warning]</a></span>  </div>

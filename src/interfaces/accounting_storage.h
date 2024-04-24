@@ -64,7 +64,7 @@ extern int acct_storage_g_fini(void); /* unload the plugin */
  * get a new connection to the storage unit
  * IN: conn_num - If running more than one connection to the database
  *     this can be used to tell which connection is doing what
- * OUT: persist_conn_flags - If using a persistant connection to talk to the
+ * OUT: persist_conn_flags - If using a persistent connection to talk to the
  *      slurmdbd get back the flags from the server.
  * IN: rollback - maintain journal of changes to permit rollback
  * RET: pointer used to access db
@@ -616,7 +616,7 @@ extern int acct_storage_g_shutdown(void *db_conn);
 /*********************** CLUSTER ACCOUNTING STORAGE **************************/
 
 /*
- * Send all relavant information to the DBD.
+ * Send all relevant information to the DBD.
  * RET: SLURM_SUCCESS on success SLURM_ERROR else
  */
 extern void acct_storage_g_send_all(void *db_conn, time_t event_time,

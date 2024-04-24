@@ -238,7 +238,7 @@ directly to the controlling terminal for interactive jobs.
 
 Allocate only one process per compute node. For SMP nodes, only one processor
 will be allocated a job. This flag is used to implement multiple level
-parallelism with MPI between nodes, and threads within a node, assmuming the
+parallelism with MPI between nodes, and threads within a node, assuming the
 code is set up to do that.
 
 =item B<-config <config_file>>

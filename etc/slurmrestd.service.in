@@ -11,7 +11,7 @@ EnvironmentFile=-/etc/default/slurmrestd
 # slurmrestd should not run as root or the slurm user.
 # Please either use the -u and -g options in /etc/sysconfig/slurmrestd or
 # /etc/default/slurmrestd, or explicitly set the User and Group in this file
-# an unpriviledged user to run as.
+# an unprivileged user to run as.
 # User=
 # Group=
 ExecStart=@sbindir@/slurmrestd $SLURMRESTD_OPTIONS

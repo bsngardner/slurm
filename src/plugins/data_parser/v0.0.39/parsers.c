@@ -187,7 +187,7 @@ static void _check_flag_bit(int8_t i, const flag_bit_t *bit, bool *found_bit)
 	xassert(bit->mask_name && bit->mask_name[0]);
 
 	if (bit->type == FLAG_BIT_TYPE_BIT) {
-		/* atleast one bit must be set */
+		/* at least one bit must be set */
 		xassert(bit->value);
 		/* mask must include all value bits */
 		xassert((bit->mask & bit->value) == bit->value);
@@ -739,7 +739,7 @@ static int PARSE_FUNC(QOS_PREEMPT_LIST)(const parser_t *const parser, void *obj,
 	if (list_is_empty(qos->preempt_list)) {
 		/*
 		 * If the QOS list is empty, then we need to set this special
-		 * entry to notify slurmdbd that this is explicilty empty and
+		 * entry to notify slurmdbd that this is explicitly empty and
 		 * not a no change request
 		 */
 		list_append(qos->preempt_list, EMPTY_QOS_ID_ENTRY);
@@ -783,7 +783,7 @@ static int DUMP_FUNC(QOS_PREEMPT_LIST)(const parser_t *const parser, void *obj,
 
 			/*
 			 * There is a race condition here where the global
-			 * QOS list could have changed betwen the query of the
+			 * QOS list could have changed between the query of the
 			 * list and the bitstrs. Just error and have the user
 			 * try again if they want.
 			 */
@@ -5142,7 +5142,7 @@ static const parser_t PARSER_ARRAY(CLUSTER_REC)[] = {
 	add_parse(STRING, control_host, "controller/host", NULL),
 	add_parse(UINT32, control_port, "controller/port", NULL),
 	add_skip(dim_size), /* BG deprecated */
-	add_skip(fed), /* federation not supportted */
+	add_skip(fed), /* federation not supported */
 	add_parse_bit_flag_array(slurmdb_cluster_rec_t, CLUSTER_REC_FLAGS, false, flags, "flags", NULL),
 	add_skip(lock), /* not packed */
 	add_parse(STRING, name, "name", NULL),

@@ -397,7 +397,7 @@ typedef struct {
 	int allow_uids_cnt;	/* count of allowed user IDs */
 	char *allow_qos;	/* comma delimited list of qos,
 				 * NULL indicates all */
-	bitstr_t *allow_qos_bitstr; /* (DON'T PACK) assocaited with
+	bitstr_t *allow_qos_bitstr; /* (DON'T PACK) associated with
 				 * char *allow_qos but used internally */
 	char *alternate; 	/* name of alternate partition */
 	double *billing_weights;    /* array of TRES billing weights */
@@ -524,7 +524,7 @@ typedef struct {
 	time_t start_time;	/* start time of reservation		*/
 	time_t start_time_first;/* when the reservation first started	*/
 	time_t start_time_prev;	/* If start time was changed this is
-				 * the pervious start time.  Needed
+				 * the previous start time.  Needed
 				 * for accounting */
 	char *tres_fmt_str;     /* formatted string of tres to deal with */
 	char *tres_str;         /* simple string of tres to deal with */
@@ -1018,7 +1018,7 @@ typedef struct depend_spec {
 
 /* Used as the mode for update_node_active_features() */
 typedef enum {
-	FEATURE_MODE_IND,  /* Print each node change indivually */
+	FEATURE_MODE_IND,  /* Print each node change individually */
 	FEATURE_MODE_COMB, /* Try to combine like changes */
 	FEATURE_MODE_PEND, /* Print any pending change message */
 } feature_mode_t;
@@ -1664,7 +1664,7 @@ extern job_record_t *job_array_post_sched(job_record_t *job_ptr);
 
 /* Create an exact copy of an existing job record for a job array.
  * IN job_ptr - META job record for a job array, which is to become an
- *		individial task of the job array.
+ *		individual task of the job array.
  *		Set the job's array_task_id to the task to be split out.
  * RET - The new job record, which is the new META job record. */
 extern job_record_t *job_array_split(job_record_t *job_ptr);
@@ -1862,12 +1862,12 @@ extern int job_complete(uint32_t job_id, uid_t uid, bool requeue,
  * job_independent - determine if this job has a dependent job pending
  *	or if the job's scheduled begin time is in the future
  * IN job_ptr - pointer to job being tested
- * RET - true if job no longer must be defered for another job
+ * RET - true if job no longer must be deferred for another job
  */
 extern bool job_independent(job_record_t *job_ptr);
 
 /*
- * job_req_node_filter - job reqeust node filter.
+ * job_req_node_filter - job request node filter.
  *	clear from a bitmap the nodes which can not be used for a job
  *	test memory size, required features, processor count, etc.
  * NOTE: Does not support exclusive OR of features.
@@ -2404,9 +2404,9 @@ extern void setup_job_state_hash(int new_hash_table_size);
 
 #ifndef NDEBUG
 /*
- * Walk entire job state cache and verify every job matchs job_ptr states
+ * Walk entire job state cache and verify every job matches job_ptr states
  * WARNING: slow and expensive to run
- * WARNING: caller must hold atleast job read lock
+ * WARNING: caller must hold at least job read lock
  */
 extern void verify_job_state_cache_synced(void);
 #else
@@ -2591,7 +2591,7 @@ extern int step_create(job_step_create_request_msg_t *step_specs,
 
 /*
  * step_layout_create - creates a step_layout according to the inputs.
- * IN step_ptr - step having tasks layed out
+ * IN step_ptr - step having tasks laid out
  * IN step_node_list - node list of hosts in step
  * IN node_count - count of nodes in step allocation
  * IN num_tasks - number of tasks in step
@@ -3073,7 +3073,7 @@ extern bool waiting_for_node_boot(node_record_t *node_ptr);
 extern bool waiting_for_node_power_down(node_record_t *node_ptr);
 
 /*
- * Check if any part of job_ptr is overlaping node_map.
+ * Check if any part of job_ptr is overlapping node_map.
  * IN node_map - bitstr of nodes set.
  * IN job_ptr (hetjob or not) to check.
  *
@@ -3143,7 +3143,7 @@ extern int job_get_node_inx(char *node_name, bitstr_t *node_bitmap);
  * update_node_active_features - Update active features associated with nodes
  * IN node_names - List of nodes to update
  * IN active_features - New active features value
- * IN mode - FEATURE_MODE_IND : Print each node change indivually
+ * IN mode - FEATURE_MODE_IND : Print each node change individually
  *           FEATURE_MODE_COMB: Try to combine like changes (SEE NOTE BELOW)
  *           FEATURE_MODE_PEND: Print any pending change message
  * RET: SLURM_SUCCESS or error code
@@ -3158,7 +3158,7 @@ extern int update_node_active_features(char *node_names, char *active_features,
  *	nodes, build new config list records as needed
  * IN node_names - List of nodes to update
  * IN avail_features - New available features value
- * IN mode - FEATURE_MODE_IND : Print each node change indivually
+ * IN mode - FEATURE_MODE_IND : Print each node change individually
  *           FEATURE_MODE_COMB: Try to combine like changes (SEE NOTE BELOW)
  *           FEATURE_MODE_PEND: Print any pending change message
  * RET: SLURM_SUCCESS or error code

@@ -260,7 +260,7 @@ def test_db_accounts():
     assert resp.body["warnings"]
     assert not resp.body["errors"]
 
-    # verify account matches modifiy request
+    # verify account matches modify request
     resp = slurm.slurmdb_v0039_get_account(path_params={"account_name": account2_name})
     assert resp.response.status == 200
     assert resp.body["accounts"]
@@ -1002,7 +1002,7 @@ def test_db_qos():
     atf.run_command("sacctmgr -i create account {}".format(account_name), fatal=False)
     atf.run_command("sacctmgr -i create account {}".format(account2_name), fatal=False)
     atf.run_command(
-        "sacctmgr -i create user {} cluster={} acccount={}".format(
+        "sacctmgr -i create user {} cluster={} account={}".format(
             user_name, local_cluster_name, account_name
         ),
         fatal=False,

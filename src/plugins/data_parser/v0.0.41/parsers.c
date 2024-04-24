@@ -497,7 +497,7 @@ static void _check_flag_bit(int8_t i, const flag_bit_t *bit, bool *found_bit,
 	}
 
 	if (bit->type == FLAG_BIT_TYPE_BIT) {
-		/* atleast one bit must be set */
+		/* at least one bit must be set */
 		xassert(bit->value);
 		/* mask must include all value bits */
 		xassert((bit->mask & bit->value) == bit->value);
@@ -1075,7 +1075,7 @@ static int DUMP_FUNC(QOS_PREEMPT_LIST)(const parser_t *const parser, void *obj,
 
 			/*
 			 * There is a race condition here where the global
-			 * QOS list could have changed betwen the query of the
+			 * QOS list could have changed between the query of the
 			 * list and the bitstrs. Just error and have the user
 			 * try again if they want.
 			 */
@@ -6432,7 +6432,7 @@ static const parser_t PARSER_ARRAY(ASSOC_SHORT)[] = {
 	add_parse(STRING, acct, "account", "Association account (if assigned)"),
 	add_parse(STRING, cluster, "cluster", "Association cluster (if assigned)"),
 	add_parse(STRING, partition, "partition", "Association partition (if assigned)"),
-	add_parse_req(STRING, user, "user", "Assocation user (if assigned)"),
+	add_parse_req(STRING, user, "user", "Association user (if assigned)"),
 	add_parse(UINT32, id, "id", "Numeric Association ID (if known)"),
 };
 #undef add_parse
@@ -7038,7 +7038,7 @@ static const parser_t PARSER_ARRAY(CLUSTER_REC)[] = {
 	add_parse(STRING, control_host, "controller/host", NULL),
 	add_parse(UINT32, control_port, "controller/port", NULL),
 	add_skip(dim_size), /* BG deprecated */
-	add_skip(fed), /* federation not supportted */
+	add_skip(fed), /* federation not supported */
 	add_parse_bit_flag_array(slurmdb_cluster_rec_t, CLUSTER_REC_FLAGS, false, flags, "flags", NULL),
 	add_skip(lock), /* not packed */
 	add_parse(STRING, name, "name", NULL),
@@ -8480,7 +8480,7 @@ static const parser_t PARSER_ARRAY(OPENAPI_USER_PARAM)[] = {
 	add_parser(openapi_user_query_t, mtype, false, field, 0, path, desc)
 static const parser_t PARSER_ARRAY(OPENAPI_USER_QUERY)[] = {
 	add_parse(BOOL, with_deleted, "with_deleted", "Include deleted users"),
-	add_parse(BOOL, with_assocs, "with_assocs", "Include assocations"),
+	add_parse(BOOL, with_assocs, "with_assocs", "Include associations"),
 	add_parse(BOOL, with_coords, "with_coords", "Include coordinators"),
 	add_parse(BOOL, with_wckeys, "with_wckeys", "Include wckeys"),
 };
@@ -8528,7 +8528,7 @@ static const parser_t PARSER_ARRAY(OPENAPI_ACCOUNT_QUERY)[] = {
 #define add_parse(mtype, field, path, desc) \
 	add_parser(slurmdb_account_cond_t , mtype, false, field, 0, path, desc)
 static const parser_t PARSER_ARRAY(ACCOUNT_CONDITION)[] = {
-	add_parse(ASSOC_CONDITION_PTR, assoc_cond, "assocation", "assocation filter"),
+	add_parse(ASSOC_CONDITION_PTR, assoc_cond, "association", "association filter"),
 	add_parse(STRING_LIST, description_list, "description", "CSV description list"),
 	add_parse(BOOL16, with_assocs, "with_assocs", "include associations"),
 	add_parse(BOOL16, with_coords, "with_coords", "include coordinators"),
@@ -8741,7 +8741,7 @@ static const flag_bit_t PARSER_FLAG_ARRAY(STEP_NAMES)[] = {
 	add_parser(shares_response_msg_t, mtype, false, field, 0, path, desc)
 #define add_skip(field) add_parser_skip(shares_response_msg_t, field)
 static const parser_t PARSER_ARRAY(SHARES_RESP_MSG)[] = {
-	add_cparse(ASSOC_SHARES_OBJ_LIST, "shares", "Assocation shares"),
+	add_cparse(ASSOC_SHARES_OBJ_LIST, "shares", "Association shares"),
 	add_parse(UINT64, tot_shares, "total_shares", "Total number of shares"),
 	add_skip(tres_cnt),
 	add_skip(tres_names),
@@ -8761,7 +8761,7 @@ static const flag_bit_t PARSER_FLAG_ARRAY(ASSOC_SHARES_OBJ_WRAP_TYPE)[] = {
 	add_parser(assoc_shares_object_wrap_t, mtype, false, field, 0, path, desc)
 #define add_skip(field) add_parser_skip(assoc_shares_object_wrap_t, field)
 static const parser_t PARSER_ARRAY(ASSOC_SHARES_OBJ_WRAP)[] = {
-	add_parse(UINT32, obj.assoc_id, "id", "assocation id"),
+	add_parse(UINT32, obj.assoc_id, "id", "association id"),
 	add_parse(STRING, obj.cluster, "cluster", "cluster name"),
 	add_parse(STRING, obj.name, "name", "share name"),
 	add_parse(STRING, obj.parent, "parent", "parent name"),
@@ -9073,7 +9073,7 @@ static const parser_t PARSER_ARRAY(KILL_JOBS_RESP_JOB)[] = {
 	add_parser(rtype, OPENAPI_WARNINGS, false, warnings, 0, XSTRINGIFY(OPENAPI_RESP_STRUCT_WARNINGS_FIELD_NAME), "Query warnings")
 
 /*
- * Generic response when there is only possiblity of warnings/errors
+ * Generic response when there is only possibility of warnings/errors
  * and HTTP status code.
  */
 static const parser_t PARSER_ARRAY(OPENAPI_RESP)[] = {                            \
@@ -9123,7 +9123,7 @@ static const parser_t PARSER_ARRAY(OPENAPI_JOB_POST_RESPONSE)[] = {
 	add_parse(JOB_ARRAY_RESPONSE_MSG_PTR, results, "results", "Job update results"),
 	add_parse_deprec(STRING, job_id, 0, "job_id", "First updated JobId - Use results instead", SLURM_23_11_PROTOCOL_VERSION),
 	add_parse_deprec(STRING, step_id, 0, "step_id", "First updated StepID - Use results instead", SLURM_23_11_PROTOCOL_VERSION),
-	add_parse_deprec(STRING, job_submit_user_msg, 0, "job_submit_user_msg", "First updated Job submision user message - Use results instead", SLURM_23_11_PROTOCOL_VERSION),
+	add_parse_deprec(STRING, job_submit_user_msg, 0, "job_submit_user_msg", "First updated Job submission user message - Use results instead", SLURM_23_11_PROTOCOL_VERSION),
 	add_openapi_response_meta(openapi_job_post_response_t),
 	add_openapi_response_errors(openapi_job_post_response_t),
 	add_openapi_response_warnings(openapi_job_post_response_t),
@@ -9137,9 +9137,9 @@ static const parser_t PARSER_ARRAY(OPENAPI_JOB_POST_RESPONSE)[] = {
 	add_parser_deprec(openapi_job_submit_response_t, mtype, false, field, overloads, path, desc, deprec)
 static const parser_t PARSER_ARRAY(OPENAPI_JOB_SUBMIT_RESPONSE)[] = {
 	add_parse_deprec(JOB_SUBMIT_RESPONSE_MSG, resp, 0, "result", "Job submission", SLURM_23_11_PROTOCOL_VERSION),
-	add_parse(UINT32, resp.job_id, "job_id", "submited JobId"),
-	add_parse(STEP_ID, resp.step_id, "step_id", "submited StepID"),
-	add_parse(STRING, resp.job_submit_user_msg, "job_submit_user_msg", "job submision user message"),
+	add_parse(UINT32, resp.job_id, "job_id", "submitted JobId"),
+	add_parse(STEP_ID, resp.step_id, "step_id", "submitted StepID"),
+	add_parse(STRING, resp.job_submit_user_msg, "job_submit_user_msg", "job submission user message"),
 	add_openapi_response_meta(openapi_job_submit_response_t),
 	add_openapi_response_errors(openapi_job_submit_response_t),
 	add_openapi_response_warnings(openapi_job_submit_response_t),
@@ -9688,7 +9688,7 @@ static const parser_t parsers[] = {
 	addpap(ACCOUNT_SHORT, slurmdb_account_rec_t, NULL, slurmdb_destroy_account_rec),
 	addpap(ACCOUNTING, slurmdb_accounting_rec_t, NULL, slurmdb_destroy_accounting_rec),
 	addpap(ACCOUNTS_ADD_COND, slurmdb_add_assoc_cond_t, NEW_FUNC(ACCOUNTS_ADD_COND), slurmdb_destroy_add_assoc_cond),
-	/* Re-use already existing NEW_FUNC */
+	/* Reuse already existing NEW_FUNC */
 	addpap(USERS_ADD_COND, slurmdb_add_assoc_cond_t, NEW_FUNC(ACCOUNTS_ADD_COND), slurmdb_destroy_add_assoc_cond),
 	addpap(COORD, slurmdb_coord_rec_t, NULL, slurmdb_destroy_coord_rec),
 	addpap(WCKEY, slurmdb_wckey_rec_t, NEW_FUNC(WCKEY), slurmdb_destroy_wckey_rec),

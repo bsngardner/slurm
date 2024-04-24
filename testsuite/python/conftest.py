@@ -40,7 +40,7 @@ def pytest_addoption(parser):
 
 
 def color_log_level(level, **color_kwargs):
-    # Adapted from depricated py.io TerminalWriter source
+    # Adapted from deprecated py.io TerminalWriter source
     # https://py.readthedocs.io/en/latest/_modules/py/_io/terminalwriter.html
     _esctable = dict(
         black=30,
@@ -143,7 +143,7 @@ def module_setup(request, tmp_path_factory):
     atf.properties["accounting-database-modified"] = False
     atf.properties["orig-environment"] = dict(os.environ)
 
-    # Creating a module level tmp_path mimicing what tmp_path does
+    # Creating a module level tmp_path mimicking what tmp_path does
     name = request.node.name
     name = re.sub(r"[\W]", "_", name)
     name = name[:30]

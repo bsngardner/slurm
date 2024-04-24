@@ -740,7 +740,7 @@ static int _job_test(job_record_t *job_ptr, bitstr_t *bitmap,
 		} else if (consec_nodes[consec_index] == 0) {
 			consec_req[consec_index] = -1;
 			/* already picked up any required nodes */
-			/* re-use this record */
+			/* reuse this record */
 		} else {
 			consec_end[consec_index] = i - 1;
 			if (++consec_index >= consec_size) {
@@ -1931,7 +1931,7 @@ static int _run_now(job_record_t *job_ptr, bitstr_t *bitmap,
 
 top:	if ((rc != SLURM_SUCCESS) && preemptee_candidates &&
 	    (exp_cr = _dup_cr(cr_ptr))) {
-		/* Remove all preemptable jobs from simulated environment */
+		/* Remove all preemptible jobs from simulated environment */
 		job_iterator = list_iterator_create(preemptee_candidates);
 		while ((tmp_job_ptr = list_next(job_iterator))) {
 			bool remove_all = false;
@@ -1944,7 +1944,7 @@ top:	if ((rc != SLURM_SUCCESS) && preemptee_candidates &&
 			if ((mode == PREEMPT_MODE_REQUEUE)    ||
 			    (mode == PREEMPT_MODE_CANCEL))
 				remove_all = true;
-			/* Remove preemptable job now */
+			/* Remove preemptible job now */
 			_rm_job_from_nodes(exp_cr, tmp_job_ptr, "_run_now",
 					   remove_all, false);
 			j = _job_count_bitmap(exp_cr, job_ptr,
@@ -2082,14 +2082,14 @@ static int _will_run_test(job_record_t *job_ptr, bitstr_t *bitmap,
 			if ((mode == PREEMPT_MODE_REQUEUE)    ||
 			    (mode == PREEMPT_MODE_CANCEL))
 				remove_all = true;
-			/* Remove preemptable job now */
+			/* Remove preemptible job now */
 			_rm_job_from_nodes(exp_cr, tmp_job_ptr,
 					   "_will_run_test", remove_all, false);
 		}
 	}
 	list_iterator_destroy(job_iterator);
 
-	/* Test with all preemptable jobs gone */
+	/* Test with all preemptible jobs gone */
 	if (preemptee_candidates) {
 		i = _job_count_bitmap(exp_cr, job_ptr, orig_map, bitmap,
 				      max_run_jobs, NO_SHARE_LIMIT,

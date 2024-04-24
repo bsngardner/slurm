@@ -80,7 +80,7 @@ AC_DEFUN([X_AC_DATABASES],
 				AC_MSG_RESULT([MySQL $mysql_config_major_version.$mysql_config_minor_version.$mysql_config_micro_version test program built properly.])
 				AC_SUBST(MYSQL_LIBS)
 				AC_SUBST(MYSQL_CFLAGS)
-				AC_DEFINE(HAVE_MYSQL, 1, [Define to 1 if using MySQL libaries])
+				AC_DEFINE(HAVE_MYSQL, 1, [Define to 1 if using MySQL libraries])
 			else
 				MYSQL_CFLAGS=""
 				MYSQL_LIBS=""

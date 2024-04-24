@@ -151,7 +151,7 @@ extern slurm_step_ctx_t *step_ctx_create_timeout(
 	xassert(step_req);
 
 	/*
-	 * We will handle the messages in the step_launch.c mesage handler,
+	 * We will handle the messages in the step_launch.c message handler,
 	 * but we need to open the socket right now so we can tell the
 	 * controller which port to use.
 	 */
@@ -243,7 +243,7 @@ extern slurm_step_ctx_t *step_ctx_create_no_alloc(
 	uint16_t port = 0;
 
 	xassert(step_req);
-	/* We will handle the messages in the step_launch.c mesage handler,
+	/* We will handle the messages in the step_launch.c message handler,
 	 * but we need to open the socket right now so we can tell the
 	 * controller which port to use.
 	 */
@@ -253,7 +253,7 @@ extern slurm_step_ctx_t *step_ctx_create_no_alloc(
 	}
 	step_req->port = port;
 
-	/* Then make up a reponse with only certain things filled in */
+	/* Then make up a response with only certain things filled in */
 	step_resp = (job_step_create_response_msg_t *)
 		xmalloc(sizeof(job_step_create_response_msg_t));
 

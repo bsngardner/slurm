@@ -133,7 +133,7 @@ static void _set_flag_bit_equal(const parser_t *const parser, void *dst,
 {
 	/* C allows compiler to choose a size for the enum
 	 *
-	 * If the comparsion is all or nothing, then clear all the masked bits
+	 * If the comparison is all or nothing, then clear all the masked bits
 	 * if it doesnt match which means parser order matters with these.
 	 */
 	if (parser->size == sizeof(uint64_t)) {
@@ -1075,7 +1075,7 @@ static bool _match_flag_bit(const parser_t *const parser, void *src,
 	if (used_equal_bits & bit->mask)
 		return false;
 
-	/* C allows complier to choose a size for the enum */
+	/* C allows compiler to choose a size for the enum */
 	if (parser->size == sizeof(uint64_t)) {
 		uint64_t *flags = src;
 		return ((*flags & v) == v);

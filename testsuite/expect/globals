@@ -191,7 +191,7 @@ cset bkill     	 "${slurm_dir}/bin/bkill"
 cset bsub     	 "${slurm_dir}/bin/bsub"
 
 cset influx	"/usr/bin/influx"
-# If using MPICH-2 or other version of MPI requiring pmi libary, use this
+# If using MPICH-2 or other version of MPI requiring pmi library, use this
 #cset mpicc	"/home/jette/mpich2-install/bin/mpicc"
 #cset use_pmi	1
 # OR for other versions of MPICH, use this
@@ -829,7 +829,7 @@ proc _line_trace {} {
 #	tolerance
 #		A numeric tolerance
 #	symmetry
-#		By default the permitted range of values is symetric:
+#		By default the permitted range of values is symmetric:
 #			[expected - tolerance, expected + tolerance]
 #		If the + sign is specified, the tolerance is limited to the
 #		the higher side only:
@@ -851,7 +851,7 @@ proc _line_trace {} {
 #		exclusive, ie the min and max tolerated values are excluded:
 #			(expected - tolerance, expected + tolerance)
 #	expression
-#		any combination of symetry, percent and exclusivity is allowed
+#		any combination of symmetry, percent and exclusivity is allowed
 #
 # RETURN VALUE
 #	Returns true if the observed value is within the specified tolerance
@@ -1168,7 +1168,7 @@ proc run_command args {
 			fail $message
 		}
 	} elseif {$expect_failure && $exit_status == 0} {
-		set message "Command \"$command\" was expected to fail but succeeeded"
+		set message "Command \"$command\" was expected to fail but succeeded"
 		if {$action eq "warn"} {
 			log_warn $message
 		} elseif {$action eq "subtest"} {
@@ -5042,7 +5042,7 @@ proc check_job_state { job state {het_job 0}} {
 #	get_gres_count gres_name ?node_list?
 #
 # DESCRIPTION
-#	Returns a dict of node names and the count of a specifed
+#	Returns a dict of node names and the count of a specified
 #	GRES aggregating all its types on each node.
 #
 # RETURN VALUE
@@ -5313,7 +5313,7 @@ proc get_gpu_socket_count { gpu_cnt sockets_per_node } {
 #	get_highest_mps_count node_count
 #
 # DESCRIPTION
-#	For a given number of nodes, returns the higest number of MPS per GPU
+#	For a given number of nodes, returns the highest number of MPS per GPU
 #	available at least on those number of nodes.
 #
 ################################################################
@@ -5472,7 +5472,7 @@ proc get_conf_path { } {
 ################################################################
 #
 # NAME
-#	save_conf - saves a backup of the specfied configuration file
+#	save_conf - saves a backup of the specified configuration file
 #
 # SYNOPSIS
 #	save_conf file_name
@@ -5751,7 +5751,7 @@ proc create_res { res_name res_params } {
 ################################################################
 #
 # NAME
-#	update_res - update exisiting reservation in system
+#	update_res - update existing reservation in system
 #
 # SYNOPSIS
 #	update_res ?res_name? ?res_params?
@@ -6579,7 +6579,7 @@ proc _is_testproc_included {testproc_id testproc_alias} {
 #	It is meant to be used when some testprocs cannot be run due config
 #	limitations, but still call testproc to register what testprocs
 #	are skipped for a given reason.
-#	Use run_following_testprocs to reenable the norma execution of testprocs.
+#	Use run_following_testprocs to re-enable the norma execution of testprocs.
 
 ################################################################
 

@@ -333,7 +333,7 @@ static int _eval_nodes_dfly(topology_eval_t *topo_eval)
 		goto fini;
 	}
 
-	/* Check that all specificly required nodes are on shared network */
+	/* Check that all specifically required nodes are on shared network */
 	if (req_nodes_bitmap &&
 	    !bit_super_set(req_nodes_bitmap,
 			   switch_node_bitmap[top_switch_inx])) {
@@ -922,7 +922,7 @@ static int _eval_nodes_topo(topology_eval_t *topo_eval)
 		goto fini;
 	}
 
-	/* Check that all specificly required nodes are on shared network */
+	/* Check that all specifically required nodes are on shared network */
 	if (req_nodes_bitmap &&
 	    !bit_super_set(req_nodes_bitmap,
 			   switch_node_bitmap[top_switch_inx])) {

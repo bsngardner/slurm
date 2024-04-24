@@ -231,7 +231,7 @@ static void _update_qos(ctxt_t *ctxt, bool commit)
 	if (!(dqos = get_query_key_list("QOS", ctxt, &parent_path))) {
 		resp_warn(
 			ctxt, __func__,
-			"ignoring empty or non-existant QOS array for update");
+			"ignoring empty or non-existent QOS array for update");
 		FREE_NULL_DATA(parent_path);
 		return;
 	}

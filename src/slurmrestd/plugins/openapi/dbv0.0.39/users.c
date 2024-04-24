@@ -172,7 +172,7 @@ static int _foreach_update_user(void *x, void *arg)
 
 		if (!user_list || list_is_empty(user_list)) {
 			resp_error(ctxt, ESLURM_USER_ID_MISSING, __func__,
-			   "Unable to rename non-existant user %s to %s",
+			   "Unable to rename non-existent user %s to %s",
 			   user->old_name, user->name);
 			goto cleanup;
 		}
@@ -308,7 +308,7 @@ static void _update_users(ctxt_t *ctxt, bool commit)
 
 	if (!dusers) {
 		resp_warn(ctxt, __func__,
-			  "ignoring empty or non-existant users array");
+			  "ignoring empty or non-existent users array");
 		goto cleanup;
 	}
 

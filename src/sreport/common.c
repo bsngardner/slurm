@@ -448,7 +448,7 @@ extern void sreport_set_usage_column_width(print_field_t *usage_field,
 
 		/* The first association will always be the largest
 		 * count of any TRES, so just peek at it.  If the
-		 * cluster doesn't have assoications for some reason
+		 * cluster doesn't have associations for some reason
 		 * use the cluster main one which has the total time.
 		 */
 

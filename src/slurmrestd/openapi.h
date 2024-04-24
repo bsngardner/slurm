@@ -146,7 +146,7 @@ extern int register_path_tag(const char *path);
  * 	NULL (to use path in op_path)
  * IN op_path - Operation binding for path
  * IN meta - Meta information from plugin (or NULL)
- * IN parser - Relavent data_parser (or NULL)
+ * IN parser - Relevant data_parser (or NULL)
  * RET -1 on error or >0 tag value for path.
  *
  * Can safely be called multiple times for same path.

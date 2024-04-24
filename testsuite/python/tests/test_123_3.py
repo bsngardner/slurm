@@ -430,7 +430,7 @@ def test_overlap_replacing(request, get_and_down_nodes, reocurring_flag):
     )
 
     logging.info(
-        f"Checking that resv2 picks the new available node, and that not overlaping reservations happen:"
+        f"Checking that resv2 picks the new available node, and that not overlapping reservations happen:"
     )
     assert atf.repeat_until(
         lambda: atf.get_reservation_parameter("resv2", "Nodes"),

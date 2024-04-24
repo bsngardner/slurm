@@ -441,7 +441,7 @@ static void _job_post(ctxt_t *ctxt)
 	}
 	if (!req.job && !req.jobs) {
 		resp_error(ctxt, ESLURM_REST_INVALID_QUERY, __func__,
-			   "Specifing either \"job\" or \"jobs\" fields are required to submit job");
+			   "Specifying either \"job\" or \"jobs\" fields are required to submit job");
 		return;
 	}
 

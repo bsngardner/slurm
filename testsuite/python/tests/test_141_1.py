@@ -612,7 +612,7 @@ def test_power_down_on_idle():
         "+"
     ) or "POWERING_DOWN" in atf.get_node_parameter(f"{node_prefix}1", "State").split(
         "+"
-    ), "Cloud node wasn't immediately POWERING_DOWN once idle, in contrary to 'PowerDownOnIdle=Yes' flag for parition"
+    ), "Cloud node wasn't immediately POWERING_DOWN once idle, in contrary to 'PowerDownOnIdle=Yes' flag for partition"
     atf.wait_for_node_state(f"{node_prefix}1", "POWERING_DOWN", timeout=5, fatal=True)
     atf.wait_for_node_state(
         f"{node_prefix}1", "POWERED_DOWN", timeout=suspend_timeout + 5, fatal=True

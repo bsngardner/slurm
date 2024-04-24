@@ -863,7 +863,7 @@ static int _set_job_bits1(int node_inx, int job_node_inx, int rem_nodes,
 		 * least one gpu on the node anyway.
 		 * For example --gpus=typeA:2,typeB:1 where there is only one
 		 * typeA on each node then two nodes are required. Because this
-		 * is not a heterogenous job a typeB gpu does have to be
+		 * is not a heterogeneous job a typeB gpu does have to be
 		 * allocated on each node even though they only requested one
 		 * for the job.
 		 */
@@ -1181,7 +1181,7 @@ static void _set_task_bits(int node_inx, sock_gres_t *sock_gres,
 	gres_needed = _get_task_cnt_node(tasks_per_socket, sock_cnt) *
 		gres_js->gres_per_task;
 
-	/* First pick GRES for acitve sockets */
+	/* First pick GRES for active sockets */
 	for (s = 0; s < sock_cnt; s++) {
 		if (!tasks_per_socket[s])
 			continue;

@@ -80,7 +80,7 @@ List registered_clusters = NULL;
 pthread_mutex_t rpc_mutex = PTHREAD_MUTEX_INITIALIZER;
 slurmdb_stats_rec_t rpc_stats;
 pthread_mutex_t registered_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_t signal_handler_thread;	/* thread ID for signal hander */
+pthread_t signal_handler_thread;	/* thread ID for signal handler */
 
 /* Local variables */
 static int    dbd_sigarray[] = {	/* blocked signals for this process */
@@ -93,9 +93,9 @@ static int    setwd = 0;		/* change working directory -s  */
 static log_options_t log_opts = 	/* Log to stderr & syslog */
 	LOG_OPTS_INITIALIZER;
 static int	 new_nice = 0;
-static pthread_t rpc_handler_thread = 0; /* thread ID for RPC hander */
-static pthread_t rollup_handler_thread = 0; /* thread ID for rollup hander */
-static pthread_t commit_handler_thread = 0; /* thread ID for commit hander */
+static pthread_t rpc_handler_thread = 0; /* thread ID for RPC handler */
+static pthread_t rollup_handler_thread = 0; /* thread ID for rollup handler */
+static pthread_t commit_handler_thread = 0; /* thread ID for commit handler */
 static pthread_mutex_t rollup_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool running_rollup = 0;
 static bool running_commit = 0;

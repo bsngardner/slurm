@@ -448,7 +448,7 @@ static int _eval_nodes_consec(topology_eval_t *topo_eval)
 		    (node_ptr->sched_weight != consec_weight[consec_index])) {
 			/* End last consecutive set, setup start of next set */
 			if (consec_nodes[consec_index] == 0) {
-				/* Only required nodes, re-use consec record */
+				/* Only required nodes, reuse consec record */
 				consec_req[consec_index] = -1;
 			} else {
 				/* End last set, setup for start of next set */
@@ -483,7 +483,7 @@ static int _eval_nodes_consec(topology_eval_t *topo_eval)
 			}
 			consec_weight[consec_index] = node_ptr->sched_weight;
 		} else if (consec_nodes[consec_index] == 0) {
-			/* Only required nodes, re-use consec record */
+			/* Only required nodes, reuse consec record */
 			consec_req[consec_index] = -1;
 			consec_weight[consec_index] = NO_VAL64;
 		} else {

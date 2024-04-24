@@ -2613,7 +2613,7 @@ Multiple options may be comma separated.
 .TP
 \fBmin_exempt_priority=#\fR
 Threshold value for the job's global priority. Only those jobs with priority
-lower than this value will be marked as preemptable.
+lower than this value will be marked as preemptible.
 .IP
 
 .TP
@@ -2626,7 +2626,7 @@ plugin.
 
 .TP
 \fBreorder_count=#\fR
-Specify how many attempts should be made in reordering preemptable jobs to
+Specify how many attempts should be made in reordering preemptible jobs to
 minimize the count of jobs preempted.
 The default value is 1. High values may adversely impact performance.
 The logic to support this option is only available in the select/cons_tres
@@ -2646,7 +2646,7 @@ otherwise a SIGTERM will be sent to the tasks.
 If set, then execute extra logic in an attempt to preempt only the lowest
 priority jobs.
 It may be desirable to set this configuration parameter when there are multiple
-priorities of preemptable jobs.
+priorities of preemptible jobs.
 The logic to support this option is only available in the select/cons_tres
 plugin.
 .IP
@@ -6581,7 +6581,7 @@ FrontendName=frontend[00\-03] FrontendAddr=efrontend[00\-03] State=UNKNOWN
 .SH "NODESET CONFIGURATION"
 The nodeset configuration allows you to define a name for a specific set of
 nodes which can be used to simplify the partition configuration section,
-especially for heterogenous or condo\-style systems. Each nodeset may be defined
+especially for heterogeneous or condo\-style systems. Each nodeset may be defined
 by an explicit list of nodes, and/or by filtering the nodes by a particular
 configured feature. If both \fBFeature=\fR and \fBNodes=\fR are used the
 nodeset shall be the union of the two subsets.

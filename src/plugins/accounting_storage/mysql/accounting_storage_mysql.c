@@ -81,7 +81,7 @@ List registered_clusters;
 
 List as_mysql_cluster_list = NULL;
 /* This total list is only used for converting things, so no
-   need to keep it upto date even though it lives until the
+   need to keep it up to date even though it lives until the
    end of the life of the slurmdbd.
 */
 List as_mysql_total_cluster_list = NULL;
@@ -972,7 +972,7 @@ static int _as_mysql_acct_check_tables(mysql_conn_t *mysql_conn)
 	}
 
 	/* This total list is only used for converting things, so no
-	   need to keep it upto date even though it lives until the
+	   need to keep it up to date even though it lives until the
 	   end of the life of the slurmdbd.
 	*/
 	if (!(as_mysql_total_cluster_list =

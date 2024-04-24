@@ -153,7 +153,7 @@ static const struct {
 
 typedef enum {
 	PARSE_INVALID = 0,
-	/* inital state before parsing started */
+	/* initial state before parsing started */
 	PARSE_NOT_STARTED,
 
 	/* parsing states */

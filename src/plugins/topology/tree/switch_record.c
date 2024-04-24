@@ -250,7 +250,7 @@ static int _get_switch_inx(const char *name)
 /*
  * _node_name2bitmap - given a node name regular expression, build a bitmap
  *	representation, any invalid hostnames are added to a hostlist
- * IN node_names  - set of node namess
+ * IN node_names  - set of node names
  * OUT bitmap     - set to bitmap, may not have all bits set on error
  * IN/OUT invalid_hostlist - hostlist of invalid host names, initialize to NULL
  * RET 0 if no error, otherwise EINVAL
