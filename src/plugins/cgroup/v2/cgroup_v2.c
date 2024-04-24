@@ -798,7 +798,7 @@ static int _init_new_scope_dbus(char *scope_path)
 		 * stopped.
 		 *
 		 * This minimizes the interaction with systemd becoming less
-		 * dependant on possible malfunctions it might have.
+		 * dependent on possible malfunctions it might have.
 		 */
 		if (xdaemon())
 			_exit(127);
@@ -1150,7 +1150,7 @@ extern int init(void)
 	 * Check available controllers in cgroup.controller, record them in our
 	 * bitmap and enable them if EnableControllers option is set.
 	 * We enable them manually just because we support CgroupIgnoreSystemd
-	 * option. Theorically when starting a unit with Delegate=yes, you will
+	 * option. Theoretically when starting a unit with Delegate=yes, you will
 	 * get all controllers available at your level.
 	 */
 	if (_setup_controllers() != SLURM_SUCCESS)
@@ -1992,7 +1992,7 @@ extern cgroup_limits_t *cgroup_p_constrain_get(cgroup_ctl_type_t ctl,
 
 		/*
 		 * Replace the last \n by \0. We lose one byte but we don't care
-		 * since tipically this object will be freed soon and we still
+		 * since typically this object will be freed soon and we still
 		 * keep the correct array size.
 		 */
 		if (limits->cores_size > 0)
@@ -2110,7 +2110,7 @@ extern int cgroup_p_task_addto(cgroup_ctl_type_t ctl, stepd_step_rec_t *step,
 			xfree(task_cg_info);
 			return SLURM_ERROR;
 		}
-                /* Inititalize the bpf_program before appending to the list. */
+                /* Initialize the bpf_program before appending to the list. */
 		init_ebpf_prog(&task_cg_info->p);
 
 		/* Add the cgroup to the list now that it is initialized. */

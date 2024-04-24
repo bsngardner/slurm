@@ -1872,7 +1872,7 @@ typedef struct job_info {
 	uint16_t pn_min_cpus;   /* minimum # CPUs per node, default=0 */
 	uint32_t pn_min_tmp_disk; /* minimum tmp disk per node, default=0 */
 	time_t preempt_time;	/* preemption signal time */
-	time_t preemptable_time;/* job becomes preemptable from
+	time_t preemptable_time;/* job becomes preemptible from
 				 *  PreemptExemptTime */
 	time_t pre_sus_time;	/* time job ran prior to last suspend */
 	uint32_t priority;	/* relative priority of the job,
@@ -2324,7 +2324,7 @@ typedef struct node_info {
 				   i.e cpus minus specialized cpus*/
 	char *cpu_spec_list;	/* node's specialized cpus */
 	acct_gather_energy_t *energy;	 /* energy data */
-	char *extra;		/* arbitrary sting */
+	char *extra;		/* arbitrary string */
 	char *features;		/* list of a node's available features */
 	char *features_act;	/* list of a node's current active features,
 				 * Same as "features" if NULL */
@@ -2789,7 +2789,7 @@ typedef struct reservation_name_msg {
 						    * plugin */
 #define DEBUG_FLAG_INTERCONNECT	SLURM_BIT(22) /* AcctGatherInterconnect
 						    * plugin */
-#define DEBUG_FLAG_GLOB_SILENCE SLURM_BIT(23) /* Supresses the glob error */
+#define DEBUG_FLAG_GLOB_SILENCE SLURM_BIT(23) /* Suppresses the glob error */
 #define DEBUG_FLAG_JOB_CONT 	SLURM_BIT(24) /* JobContainer plugin */
 #define	DEBUG_FLAG_AUDIT_RPCS	SLURM_BIT(25) /* Audit RPCs */
 #define DEBUG_FLAG_PROTOCOL	SLURM_BIT(26) /* Communication protocol */
@@ -2984,7 +2984,7 @@ typedef struct {
 	char *job_container_plugin; /* job container plugin type */
 	list_t *job_defaults_list; /* list of job_defaults_t elements */
 	uint16_t job_file_append; /* if set, append to stdout/err file */
-	uint16_t job_requeue;	/* If set, jobs get requeued on node failre */
+	uint16_t job_requeue;	/* If set, jobs get requeued on node failure */
 	char *job_submit_plugins;  /* List of job_submit plugins to use */
 	uint32_t keepalive_interval;  /* Interval between keepalive probes */
 	uint32_t keepalive_probes;  /* Number of keepalive probe attempts */
@@ -3026,7 +3026,7 @@ typedef struct {
 				   * number of minutes before cancellation */
 	char *plugindir;	/* pathname to plugins */
 	char *plugstack;        /* pathname to plugin stack config file */
-	uint32_t preempt_exempt_time; /* Time before jobs are preemptable */
+	uint32_t preempt_exempt_time; /* Time before jobs are preemptible */
 	uint16_t preempt_mode;	/* See PREEMPT_MODE_* in slurm/slurm.h */
 	char *preempt_params; /* PreemptParameters to tune preemption */
 	char *preempt_type;	/* job preemption selection plugin */
@@ -3112,7 +3112,7 @@ typedef struct {
 	uint16_t slurmctld_syslog_debug; /* slurmctld output to
 					  * local logfile and syslog*/
 	uint16_t slurmctld_timeout;/* seconds that backup controller waits
-				    * on non-responding primarly controller */
+				    * on non-responding primary controller */
 	char *slurmctld_params;	/* SlurmctldParameters */
 	uint16_t slurmd_debug;	/* slurmd logging level */
 	char *slurmd_logfile;	/* where slurmd error log gets written */
@@ -3753,7 +3753,7 @@ typedef struct {
 #define KILL_JOBS_VERBOSE SLURM_BIT(11) /* Verbose response requested */
 #define KILL_CRON SLURM_BIT(12) /* Request killing cron jobs */
 
-/* Use top bit of uint16_t in conjuction with KILL_* flags to indicate signal
+/* Use top bit of uint16_t in conjunction with KILL_* flags to indicate signal
  * has been sent to job previously. Does not need to be passed to slurmd. */
 #define WARN_SENT        SLURM_BIT(15) /* warn already sent, clear this on
 					* requeue */

@@ -57,7 +57,7 @@ struct workq_s {
 	int active;
 	int total;
 
-	/* manger is actively shutting down */
+	/* manager is actively shutting down */
 	bool shutdown;
 
 	/* number of threads */

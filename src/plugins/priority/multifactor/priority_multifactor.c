@@ -1530,7 +1530,7 @@ static void _internal_setup(void)
 }
 
 
-/* Reursively call assoc_mgr_normalize_assoc_shares from assoc_mgr.c on
+/* Recursively call assoc_mgr_normalize_assoc_shares from assoc_mgr.c on
  * children of an assoc
  */
 static void _set_norm_shares(List children_list)

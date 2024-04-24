@@ -444,7 +444,7 @@ static void _update_associations(ctxt_t *ctxt, bool commit)
 
 	if (!dassoc) {
 		resp_warn(ctxt, __func__,
-			  "ignoring empty or non-existant associations array");
+			  "ignoring empty or non-existent associations array");
 		goto cleanup;
 	}
 

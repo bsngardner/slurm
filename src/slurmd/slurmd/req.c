@@ -3043,7 +3043,7 @@ _rpc_reboot(slurm_msg_t *msg)
 			log_flag(NODE_FEATURES, "Features on node updated successfully");
 		}
 		if (!need_reboot) {
-			log_flag(NODE_FEATURES, "Reboot not required - sending registration mesage");
+			log_flag(NODE_FEATURES, "Reboot not required - sending registration message");
 			conf->boot_time = time(NULL);
 			slurm_mutex_lock(&cached_features_mutex);
 			refresh_cached_features = true;
@@ -3996,7 +3996,7 @@ static void _rpc_network_callerid(slurm_msg_t *msg)
 	if (rc == SLURM_SUCCESS) {
 		/* We found the job */
 		if (!_slurm_authorized_user(msg->auth_uid)) {
-			/* Requestor is not root or SlurmUser */
+			/* Requester is not root or SlurmUser */
 			job_uid = _get_job_uid(job_id);
 			if (job_uid != msg->auth_uid) {
 				/* RPC call sent by non-root user who does not
@@ -5351,7 +5351,7 @@ _rpc_terminate_job(slurm_msg_t *msg)
 	if (_prolog_is_running(req->step_id.job_id)) {
 		if (msg->conn_fd >= 0) {
 			/* If the step hasn't finished running the prolog
-			 * (or finshed starting the extern step) yet just send
+			 * (or finished starting the extern step) yet just send
 			 * a success to let the controller know we got
 			 * this request.
 			 */

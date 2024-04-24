@@ -310,7 +310,7 @@ static int _convert_assoc_table_post(mysql_conn_t *mysql_conn,
 			max_query_size = 1024 * 1024;
 		/*
 		 * Safety margin of 10% of the possible size.  A single set
-		 * lineage call should not exceeed 1KiB.
+		 * lineage call should not exceed 1KiB.
 		 */
 		max_query_size = (max_query_size * 0.9);
 

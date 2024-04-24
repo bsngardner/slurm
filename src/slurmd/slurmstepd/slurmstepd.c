@@ -1039,7 +1039,7 @@ static stepd_step_rec_t *_step_setup(slurm_addr_t *cli, slurm_msg_t *msg)
 	}
 
 	/*
-	 * Add slurmd node topology informations to job env array
+	 * Add slurmd node topology information to job env array
 	 */
 	env_array_overwrite(&step->env,"SLURM_TOPOLOGY_ADDR",
 			    conf->node_topo_addr);

@@ -1136,7 +1136,7 @@ static int _msg_thr_create(struct step_launch_state *sls, int num_nodes)
 		eio_new_initial_obj(sls->msg_handle, obj);
 	}
 	/* finally, add the listening port that we told the slurmctld about
-	 * eariler in the step context creation phase */
+	 * earlier in the step context creation phase */
 	if (sls->slurmctld_socket_fd > -1) {
 		obj = eio_obj_create(sls->slurmctld_socket_fd,
 				     &message_socket_ops, (void *)sls);

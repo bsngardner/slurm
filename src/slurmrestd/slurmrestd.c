@@ -547,7 +547,7 @@ static void _lock_down(void)
 	if (check_user && !become_user && (getuid() == 0))
 		fatal("slurmrestd should not be run as the root user.");
 	if (check_user && !become_user && (getgid() == 0))
-		fatal("slurmrestd should not be run with the root goup.");
+		fatal("slurmrestd should not be run with the root group.");
 
 	if (become_user && getuid())
 		fatal("slurmrestd must run as root in become_user mode");

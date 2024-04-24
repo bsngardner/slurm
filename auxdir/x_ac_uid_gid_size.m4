@@ -14,7 +14,7 @@
 #    sizeof(gid) < sizeof(uint64_t) is less obvious, but a worse security risk.
 #    Internally, arrays of gid_t are serialized as uint32_t.
 #    If sizeof(gid_t) == sizeof(uint16_t), Slurm would call setgroups() with
-#    with every other element of the array being interpretted as zero, a.k.a.
+#    with every other element of the array being interpreted as zero, a.k.a.
 #    the group id for root.
 ##*****************************************************************************
 

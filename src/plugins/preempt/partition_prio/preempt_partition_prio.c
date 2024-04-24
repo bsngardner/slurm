@@ -1,5 +1,5 @@
 /*****************************************************************************\
- *  preempt_partition_prio.c - job preemption plugin that selects preemptable
+ *  preempt_partition_prio.c - job preemption plugin that selects preemptible
  *  jobs based upon their partition's priority.
  *****************************************************************************
  *  Copyright (C) 2009-2010 Lawrence Livermore National Security.

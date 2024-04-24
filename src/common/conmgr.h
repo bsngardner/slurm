@@ -149,7 +149,7 @@ extern const char *conmgr_work_type_string(conmgr_work_type_t type);
 
 /*
  * Prototype for all conmgr callbacks
- * IN con - ptr to relavent connection (or NULL)
+ * IN con - ptr to relevant connection (or NULL)
  * IN type - work type
  * IN status - work status
  * IN tag - logging tag for work

@@ -163,7 +163,7 @@ static void _update_clusters(ctxt_t *ctxt, bool commit)
 
 	if (!dclusters) {
 		resp_warn(ctxt, __func__,
-			  "ignoring non-existant clusters array");
+			  "ignoring non-existent clusters array");
 	} else if (!data_get_list_length(dclusters)) {
 		resp_warn(ctxt, __func__, "ignoring empty clusters array");
 	} else if (DATA_PARSE(ctxt->parser, CLUSTER_REC_LIST, cluster_list,

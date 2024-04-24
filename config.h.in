@@ -148,7 +148,7 @@
 /* Define to 1 if you have the `mtrace' function. */
 #undef HAVE_MTRACE
 
-/* Define to 1 if using MySQL libaries */
+/* Define to 1 if using MySQL libraries */
 #undef HAVE_MYSQL
 
 /* Define to 1 if you have the <netdb.h> header file. */

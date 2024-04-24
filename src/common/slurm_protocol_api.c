@@ -56,25 +56,26 @@
 #include <time.h>
 #include <unistd.h>
 
+/* PROJECT INCLUDES */
 #include "src/common/assoc_mgr.h"
 #include "src/common/fd.h"
 #include "src/common/forward.h"
+#include "src/interfaces/hash.h"
 #include "src/common/log.h"
 #include "src/common/macros.h"
 #include "src/common/net.h"
 #include "src/common/pack.h"
 #include "src/common/read_config.h"
+#include "src/interfaces/accounting_storage.h"
+#include "src/interfaces/auth.h"
+#include "src/common/slurm_protocol_interface.h"
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_protocol_common.h"
 #include "src/common/slurm_protocol_pack.h"
-#include "src/common/slurm_protocol_socket.h"
 #include "src/common/strlcpy.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 
-#include "src/interfaces/accounting_storage.h"
-#include "src/interfaces/auth.h"
-#include "src/interfaces/hash.h"
 #include "src/interfaces/topology.h"
 
 #include "src/slurmdbd/read_config.h"
@@ -1039,7 +1040,7 @@ int slurm_receive_msg(int fd, slurm_msg_t *msg, int timeout)
 	 *  length and allocate space on the heap for a buffer containing
 	 *  the message.
 	 */
-	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, timeout) < 0) {
+	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
 		rc = errno;
 		if (!rc)
 			rc = SLURMCTLD_COMMUNICATIONS_RECEIVE_ERROR;
@@ -1058,12 +1059,6 @@ int slurm_receive_msg(int fd, slurm_msg_t *msg, int timeout)
 
 endit:
 	slurm_seterrno(rc);
-
-	/*
-	 * We just set errno, we need to return SLURM_ERROR if not SLURM_SUCCESS
-	 */
-	if (rc != SLURM_SUCCESS)
-		rc = SLURM_ERROR;
 
 	return rc;
 }
@@ -1138,7 +1133,7 @@ List slurm_receive_msgs(int fd, int steps, int timeout)
 	 *  length and allocate space on the heap for a buffer containing
 	 *  the message.
 	 */
-	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, timeout) < 0) {
+	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
 		forward_init(&header.forward);
 		rc = errno;
 		goto total_return;
@@ -1342,7 +1337,7 @@ extern List slurm_receive_resp_msgs(int fd, int steps, int timeout)
 	 * length and allocate space on the heap for a buffer containing the
 	 * message.
 	 */
-	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, timeout) < 0) {
+	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
 		forward_init(&header.forward);
 		rc = errno;
 		goto total_return;
@@ -1497,10 +1492,6 @@ int slurm_receive_msg_and_forward(int fd, slurm_addr_t *orig_addr,
 	void *auth_cred = NULL;
 	buf_t *buffer;
 	char *peer = NULL;
-	bool keep_buffer = false;
-
-	if (msg->flags & SLURM_MSG_KEEP_BUFFER)
-		keep_buffer = true;
 
 	xassert(fd >= 0);
 
@@ -1533,7 +1524,7 @@ int slurm_receive_msg_and_forward(int fd, slurm_addr_t *orig_addr,
 	 *  length and allocate space on the heap for a buffer containing
 	 *  the message.
 	 */
-	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen,
+	if (slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0,
 				       (slurm_conf.msg_timeout * 1000)) < 0) {
 		forward_init(&header.forward);
 		rc = errno;
@@ -1667,8 +1658,6 @@ skip_auth:
 	msg->msg_type = header.msg_type;
 	msg->flags = header.flags;
 
-	msg->body_offset = get_buf_offset(buffer);
-
 	if ((header.body_length != remaining_buf(buffer)) ||
 	    _check_hash(buffer, &header, msg, auth_cred) ||
 	     (unpack_msg(msg, buffer) != SLURM_SUCCESS) ) {
@@ -1679,10 +1668,7 @@ skip_auth:
 	}
 	msg->auth_cred = auth_cred;
 
-	if (keep_buffer)
-		msg->buffer = buffer;
-	else
-		FREE_NULL_BUFFER(buffer);
+	FREE_NULL_BUFFER(buffer);
 	rc = SLURM_SUCCESS;
 
 total_return:
@@ -1921,11 +1907,12 @@ cleanup:
  * IN buffer		- buffer to send
  * IN size		- size of buffer send
  * IN timeout		- how long to wait in milliseconds
- * RET size_t		- bytes sent , or -1 on errror
+ * RET size_t		- bytes sent , or -1 on error
  */
 size_t slurm_write_stream(int open_fd, char *buffer, size_t size)
 {
 	return slurm_send_timeout(open_fd, buffer, size,
+	                          SLURM_PROTOCOL_NO_SEND_RECV_FLAGS,
 	                          (slurm_conf.msg_timeout * 1000));
 }
 
@@ -1935,11 +1922,12 @@ size_t slurm_write_stream(int open_fd, char *buffer, size_t size)
  * OUT buffer   - buffer to receive into
  * IN size	- size of buffer
  * IN timeout	- how long to wait in milliseconds
- * RET size_t	- bytes read , or -1 on errror
+ * RET size_t	- bytes read , or -1 on error
  */
 size_t slurm_read_stream(int open_fd, char *buffer, size_t size)
 {
 	return slurm_recv_timeout(open_fd, buffer, size,
+	                          SLURM_PROTOCOL_NO_SEND_RECV_FLAGS,
 	                          (slurm_conf.msg_timeout * 1000));
 }
 
@@ -2004,7 +1992,7 @@ extern void slurm_pack_addr_array(slurm_addr_t *addr_array, uint32_t size_val,
  * unpacks an array of slurm_addrs from a buffer
  * OUT addr_array_ptr	- slurm_addr_t[] to unpack to
  * IN/OUT size_val  	- how many to unpack
- * IN/OUT buffer	- buffer to upack the slurm_addr_t from
+ * IN/OUT buffer	- buffer to unpack the slurm_addr_t from
  * returns		- Slurm error code
  */
 extern int slurm_unpack_addr_array(slurm_addr_t **addr_array_ptr,
@@ -2132,9 +2120,7 @@ int slurm_send_rc_err_msg(slurm_msg_t *msg, int rc, char *err_msg)
  * IN msg	  - msg to respond to.
  * IN cluster_rec - cluster to direct msg to.
  */
-int slurm_send_reroute_msg(slurm_msg_t *msg,
-			   slurmdb_cluster_rec_t *cluster_rec,
-			   char *stepmgr)
+int slurm_send_reroute_msg(slurm_msg_t *msg, slurmdb_cluster_rec_t *cluster_rec)
 {
 	slurm_msg_t resp_msg;
 	reroute_msg_t reroute_msg = {0};
@@ -2146,7 +2132,6 @@ int slurm_send_reroute_msg(slurm_msg_t *msg,
 
 	/* Don't free the cluster_rec, it's pointing to the actual object. */
 	reroute_msg.working_cluster_rec = cluster_rec;
-	reroute_msg.stepmgr = stepmgr;
 
 	response_init(&resp_msg, msg, RESPONSE_SLURM_REROUTE_MSG,
 			&reroute_msg);
@@ -2167,6 +2152,7 @@ int slurm_send_reroute_msg(slurm_msg_t *msg,
 extern int slurm_send_recv_msg(int fd, slurm_msg_t *req,
 			       slurm_msg_t *resp, int timeout)
 {
+	int rc = -1;
 	slurm_msg_t_init(resp);
 
 	/* If we are using a persistent connection make sure it is the one we
@@ -2178,18 +2164,15 @@ extern int slurm_send_recv_msg(int fd, slurm_msg_t *req,
 		resp->conn = req->conn;
 	}
 
-	if (slurm_send_node_msg(fd, req) < 0)
-		return -1;
+	if (slurm_send_node_msg(fd, req) >= 0) {
+		/* no need to adjust and timeouts here since we are not
+		   forwarding or expecting anything other than 1 message
+		   and the regular timeout will be altered in
+		   slurm_receive_msg if it is 0 */
+		rc = slurm_receive_msg(fd, resp, timeout);
+	}
 
-	/*
-	 * No need to adjust the timeout here since we are not forwarding or
-	 * expecting anything other than one message. The default timeout will
-	 * be used if it is set to 0.
-	 */
-	if (slurm_receive_msg(fd, resp, timeout))
-		return -1;
-
-	return 0;
+	return rc;
 }
 
 /*
@@ -2365,20 +2348,18 @@ tryagain:
 	if (!rc && (response_msg->msg_type == RESPONSE_SLURM_REROUTE_MSG)) {
 		reroute_msg_t *rr_msg = response_msg->data;
 
-		if (rr_msg->working_cluster_rec) {
-			/*
-			 * Don't expect mutliple hops but in the case it does
-			 * happen, free the previous rr cluster_rec.
-			 */
-			if (comm_cluster_rec &&
-			    (comm_cluster_rec != save_comm_cluster_rec))
-				slurmdb_destroy_cluster_rec(comm_cluster_rec);
+		/*
+		 * Don't expect multiple hops but in the case it does
+		 * happen, free the previous rr cluster_rec.
+		 */
+		if (comm_cluster_rec &&
+		    (comm_cluster_rec != save_comm_cluster_rec))
+			slurmdb_destroy_cluster_rec(comm_cluster_rec);
 
-			comm_cluster_rec = rr_msg->working_cluster_rec;
-			slurmdb_setup_cluster_rec(comm_cluster_rec);
-			rr_msg->working_cluster_rec = NULL;
-			goto tryagain;
-		}
+		comm_cluster_rec = rr_msg->working_cluster_rec;
+		slurmdb_setup_cluster_rec(comm_cluster_rec);
+		rr_msg->working_cluster_rec = NULL;
+		goto tryagain;
 	}
 
 	if (comm_cluster_rec != save_comm_cluster_rec)
@@ -2510,7 +2491,7 @@ int slurm_send_only_node_msg(slurm_msg_t *req)
 	 * the poll() should hit POLLERR which gives the TICOUTQ count as an
 	 * additional diagnostic element.
 	 *
-	 * The steps below may result in a false-positive on occassion, in
+	 * The steps below may result in a false-positive on occasion, in
 	 * which case the code path above may opt to retransmit an already
 	 * received message. If this is a concern, you should not be using
 	 * this function.
@@ -2586,7 +2567,7 @@ void slurm_send_msg_maybe(slurm_msg_t *req)
 }
 
 /*
- *  Send a message to the nodelist specificed using fanout
+ *  Send a message to the nodelist specified using fanout
  *    Then return List containing type (ret_data_info_t).
  * IN nodelist	  - list of nodes to send to.
  * IN msg	  - a slurm_msg struct to be sent by the function
@@ -2742,7 +2723,7 @@ int slurm_send_recv_rc_msg_only_one(slurm_msg_t *req, int *rc, int timeout)
 /*
  * Send message to controller and get return code.
  * Make use of slurm_send_recv_controller_msg(), which handles
- * support for backup controller and retry during transistion.
+ * support for backup controller and retry during transition.
  * IN req - request to send
  * OUT rc - return code
  * IN comm_cluster_rec	- Communication record (host/port/version)/
@@ -2766,7 +2747,7 @@ extern int slurm_send_recv_controller_rc_msg(slurm_msg_t *req, int *rc,
 }
 
 /*
- * Free a slurm message's memebers but not the message itself
+ * Free a slurm message's members but not the message itself
  */
 extern void slurm_free_msg_members(slurm_msg_t *msg)
 {

@@ -738,7 +738,7 @@ def test_modify_federation_change_clusters():
 
 
 def test_operators():
-    """Eror checking on using +, - and ="""
+    """Error checking on using +, - and ="""
 
     error = atf.run_command_error(
         f"sacctmgr -i modify federation {federation1} set cluster={cluster1},+{cluster2}",

@@ -381,7 +381,7 @@ static void *_set_db_inx_thread(void *no_data)
 	/* DEF_TIMERS; */
 
 	/*
-	 * We only want to destory the pointer here not the contents so call
+	 * We only want to destroy the pointer here not the contents so call
 	 * special function _partial_destroy_dbd_job_start.
 	 */
 	List local_job_list = list_create(_partial_destroy_dbd_job_start);
@@ -3011,7 +3011,7 @@ extern int jobacct_storage_p_job_start(void *db_conn, job_record_t *job_ptr)
 		/*
 		 * This is to ensure we don't do this multiple times for the
 		 * same job.  This can happen when an account is being
-		 * deleted and hense the associations dealing with it.
+		 * deleted and hence the associations dealing with it.
 		 */
 		if (!req.db_index)
 			job_ptr->db_index = NO_VAL64;

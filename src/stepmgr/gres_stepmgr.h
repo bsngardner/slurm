@@ -173,7 +173,7 @@ extern void gres_stepmgr_job_merge(
  */
 extern void gres_stepmgr_job_clear_alloc(List job_gres_list);
 
-/* Given a job's GRES data structure, return the indecies for selected elements
+/* Given a job's GRES data structure, return the indices for selected elements
  * IN job_gres_list  - job's allocated GRES data structure
  * IN nodes - list of nodes allocated to job
  * OUT gres_detail_cnt - Number of elements (nodes) in gres_detail_str

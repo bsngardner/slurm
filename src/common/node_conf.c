@@ -847,8 +847,8 @@ extern void grow_node_record_table_ptr(void)
  * create_node_record - create a node record and set its values to defaults
  * IN config_ptr - pointer to node's configuration information
  * IN node_name - name of the node
- * OUT node_ptr - node_record_t** with created node on SUCESS, NULL otherwise.
- * RET SUCESS, or error code
+ * OUT node_ptr - node_record_t** with created node on SUCCESS, NULL otherwise.
+ * RET SUCCESS, or error code
  * NOTE: allocates memory at node_record_table_ptr that must be xfreed when
  *	the global node table is no longer required
  */

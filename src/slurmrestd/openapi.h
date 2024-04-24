@@ -98,10 +98,9 @@ typedef enum {
 typedef enum {
 	OP_BIND_INVALID = 0,
 	OP_BIND_NONE = SLURM_BIT(1),
-	OP_BIND_DATA_PARSER = SLURM_BIT(2), /* populate {data_parser} in URL */
+	OP_BIND_DATA_PARSER = SLURM_BIT(2),
 	OP_BIND_OPENAPI_RESP_FMT = SLURM_BIT(3), /* populate errors,warnings,meta */
 	OP_BIND_HIDDEN_OAS = SLURM_BIT(4), /* Hide from OpenAPI specification */
-	OP_BIND_NO_SLURMDBD = SLURM_BIT(5), /* Do not prepare slurmdbd connection */
 	OP_BIND_INVALID_MAX = INFINITE16
 } op_bind_flags_t;
 
@@ -147,18 +146,15 @@ extern int register_path_tag(const char *path);
  * 	NULL (to use path in op_path)
  * IN op_path - Operation binding for path
  * IN meta - Meta information from plugin (or NULL)
- * IN parser - Relavent data_parser (or NULL)
- * IN/OUT tag_ptr - Sets tag on success
- * RET SLURM_SUCCESS or
- *	ESLURM_NOT_SUPPORTED: if data_parser doesnt support all types in method
- *	or any other Slurm error
+ * IN parser - Relevant data_parser (or NULL)
+ * RET -1 on error or >0 tag value for path.
  *
  * Can safely be called multiple times for same path.
  */
 extern int register_path_binding(const char *in_path,
 				 const openapi_path_binding_t *op_path,
 				 const openapi_resp_meta_t *meta,
-				 data_parser_t *parser, int *tag_ptr);
+				 data_parser_t *parser);
 
 /*
  * Unregister a given unique tag against a path.
@@ -286,20 +282,5 @@ extern char *openapi_get_str_param(openapi_ctxt_t *ctxt, bool required,
 extern int openapi_get_date_param(openapi_ctxt_t *ctxt, bool required,
 				  const char *name, time_t *time_ptr,
 				  const char *caller);
-
-/*
- * Generate OpenAPI specification
- * IN/OUT dst - data_t to populate with specification
- * RET SLURM_SUCCESS or error
- */
-extern int generate_spec(data_t *dst);
-
-/*
- * True if only generating an OAS
- * IN set - Set to true
- * RET true if only generating a spec file
- * Warning: Do not call with set=true after multithreading started
- */
-extern bool is_spec_generation_only(bool set);
 
 #endif /* SLURMRESTD_OPENAPI_H */

@@ -88,7 +88,7 @@ static void _update_tres(ctxt_t *ctxt, bool commit)
 
 	if (!(dtres = get_query_key_list("TRES", ctxt, &parent_path))) {
 		resp_warn(ctxt, __func__,
-			  "ignoring empty or non-existant TRES array");
+			  "ignoring empty or non-existent TRES array");
 		goto cleanup;
 	}
 

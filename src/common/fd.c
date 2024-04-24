@@ -63,7 +63,7 @@
 
 /*
  * Helper macro to log_flag(NET, ...) against a given connection
- * IN fd - file descriptor relavent for logging
+ * IN fd - file descriptor relevant for logging
  * IN con_name - human friendly name for fd or NULL (to auto resolve)
  * IN fmt - log message format
  */

@@ -1546,7 +1546,7 @@ static data_for_each_cmd_t _foreach_strip_params(data_t *data, void *arg)
 
 /*
  * Merge plugin id with operationIds in paths.
- * All operationIds must be globaly unique.
+ * All operationIds must be globally unique.
  */
 static data_for_each_cmd_t _differentiate_path_operationId(const char *key,
 							   data_t *data,

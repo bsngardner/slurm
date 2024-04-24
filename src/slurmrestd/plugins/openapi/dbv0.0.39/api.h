@@ -71,7 +71,7 @@ typedef struct {
  * IN context_id - string ident for client
  * IN method - HTTP method of request
  * IN parameters - data list of client supplied HTTP parameters
- * IN query - data list of client supplied HTTP querys
+ * IN query - data list of client supplied HTTP queries
  * IN tag - callback assigned tag
  * IN auth - auth ptr reference
  */

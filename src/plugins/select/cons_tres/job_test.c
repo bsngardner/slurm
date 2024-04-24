@@ -1087,7 +1087,7 @@ static int _verify_node_state(part_res_record_t *cr_part_ptr,
 			if (_is_node_busy(cr_part_ptr, i, true,
 					  job_ptr->part_ptr, qos_preemptor,
 					  node_usage[i].jobs)) {
-				log_flag(SELECT_TYPE, "node %s is running job that shares resouces in other partition",
+				log_flag(SELECT_TYPE, "node %s is running job that shares resources in other partition",
 					 node_ptr->name);
 				goto clear_bit;
 			}
@@ -1959,7 +1959,7 @@ alloc_job:
 		return error_code;
 	}
 
-	/* translate job_res->cpus array into format with repitition count */
+	/* translate job_res->cpus array into format with repetition count */
 	build_cnt = build_job_resources_cpu_array(job_res);
 	if (job_ptr->details->whole_node & WHOLE_NODE_REQUIRED) {
 		job_ptr->total_cpus = 0;
@@ -2211,7 +2211,7 @@ static int _build_cr_job_list(void *x, void *arg)
 	}
 	/*
 	 * For hetjobs, only the leader component is potentially added
-	 * to the preemptee_candidates. If the leader is preemptable,
+	 * to the preemptee_candidates. If the leader is preemptible,
 	 * it will be removed in the else statement alongside all of the
 	 * rest of the components. For such case, we don't want to
 	 * append non-leaders to cr_job_list, otherwise we would be
@@ -2239,7 +2239,7 @@ static int _build_cr_job_list(void *x, void *arg)
 				*args->qos_preemptor = true;
 		} else
 			action = 0;	/* remove cores and memory */
-		/* Remove preemptable job now */
+		/* Remove preemptible job now */
 		_job_res_rm_job(args->future_part, args->future_usage,
 				args->future_license_list, tmp_job_ptr, action,
 				args->orig_map);
@@ -2378,7 +2378,7 @@ static int _will_run_test(job_record_t *job_ptr, bitstr_t *node_bitmap,
 	};
 	list_for_each(job_list, _build_cr_job_list, &args);
 
-	/* Test with all preemptable jobs gone */
+	/* Test with all preemptible jobs gone */
 	if (preemptee_candidates) {
 		bit_or(node_bitmap, orig_map);
 		rc = _job_test(job_ptr, node_bitmap, min_nodes, max_nodes,
@@ -2595,7 +2595,7 @@ top:	orig_node_map = bit_copy(save_node_map);
 			       resv_exc_ptr, false, true, preempt_mode);
 	} else if ((rc != SLURM_SUCCESS) && preemptee_candidates) {
 		int preemptee_cand_cnt = list_count(preemptee_candidates);
-		/* Remove preemptable jobs from simulated environment */
+		/* Remove preemptible jobs from simulated environment */
 		preempt_mode = true;
 		future_part = part_data_dup_res(select_part_record,
 						orig_node_map);
@@ -2621,7 +2621,7 @@ top:	orig_node_map = bit_copy(save_node_map);
 			if ((mode != PREEMPT_MODE_REQUEUE)    &&
 			    (mode != PREEMPT_MODE_CANCEL))
 				continue;	/* can't remove job */
-			/* Remove preemptable job now */
+			/* Remove preemptible job now */
 			if(_job_res_rm_job(future_part, future_usage,
 					   future_license_list, tmp_job_ptr, 0,
 					   orig_node_map))

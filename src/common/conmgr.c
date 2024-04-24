@@ -1274,7 +1274,7 @@ static void _wrap_on_data(conmgr_fd_t *con, conmgr_work_type_t type,
 
 	/* override buffer offset to allow reading */
 	set_buf_offset(con->in, 0);
-	/* override buffer size to only read upto previous offset */
+	/* override buffer size to only read up to previous offset */
 	con->in->size = avail;
 
 	log_flag(NET, "%s: [%s] BEGIN func=0x%"PRIxPTR" arg=0x%"PRIxPTR,
@@ -1453,8 +1453,8 @@ static void _handle_poll_event_error(int fd, conmgr_fd_t *con, short revents)
 
 	/*
 	 * Socket must not continue to be considered valid to avoid a
-	 * infinite calls to poll() which will immidiatly fail. Close
-	 * the relavent file descriptor and remove from connection.
+	 * infinite calls to poll() which will immediately fail. Close
+	 * the relevant file descriptor and remove from connection.
 	 */
 	if (close(fd)) {
 		log_flag(NET, "%s: [%s] input_fd=%d output_fd=%d calling close(%d) failed after poll() returned %s%s%s: %m",
@@ -2647,7 +2647,7 @@ extern void conmgr_queue_close_fd(conmgr_fd_t *con)
 		/*
 		 * Defer request to close connection until connection is no
 		 * longer actively doing work as closing connection would change
-		 * several variables guarenteed to not change while work is
+		 * several variables guaranteed to not change while work is
 		 * active.
 		 */
 		_add_work(true, con, _deferred_close_fd,

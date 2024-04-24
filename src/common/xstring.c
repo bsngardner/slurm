@@ -145,7 +145,7 @@ void _xstrcat(char **str1, const char *str2)
  * Append str2 onto str at pos, * expanding buf as needed. pos is updated to the
  * end of the appended string.
  *
- * Meant to be used in loops contructing longer strings that are performance
+ * Meant to be used in loops constructing longer strings that are performance
  * sensitive, as xstrcat() needs to re-seek to the end of str making the string
  * construction worse by another O(log(strlen)) factor.
  */
@@ -360,7 +360,7 @@ void _xstrfmtcat(char **str, const char *fmt, ...)
  * expanding buf as needed. pos is updated to the end of the appended
  * string.
  *
- * Meant to be used in loops contructing longer strings that are performance
+ * Meant to be used in loops constructing longer strings that are performance
  * sensitive, as xstrfmtcat() needs to re-seek to the end of str making the
  * string construction worse by another O(log(strlen)) factor.
  */
@@ -499,7 +499,7 @@ char *xstrdup(const char *str)
 /*
  * Give me a copy of the string as if it were printf.
  *   fmt (IN)		format of string and args if any
- *   RETURN		copy of formated string
+ *   RETURN		copy of formatted string
  */
 char *xstrdup_printf(const char *fmt, ...)
 {
@@ -765,7 +765,7 @@ char *xstrcasestr(const char *haystack, const char *needle)
 		for (need_inx=0; need_inx<need_size; need_inx++) {
 			if (tolower((int) hay_ptr[need_inx]) !=
 			    tolower((int) needle [need_inx]))
-				break;		/* mis-match */
+				break;		/* mismatch */
 		}
 
 		if (need_inx == need_size)	/* it matched */
@@ -783,7 +783,7 @@ char *xstrcasestr(const char *haystack, const char *needle)
  * functions can do va_start() and invoke this function.
  *
  *   fmt (IN)		format of string and args if any
- *   RETURN		copy of formated string
+ *   RETURN		copy of formatted string
  */
 size_t _xstrdup_vprintf(char **str, const char *fmt, va_list ap)
 {
