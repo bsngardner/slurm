@@ -180,12 +180,12 @@ extern int select_g_select_nodeinfo_free(dynamic_plugin_data_t *nodeinfo);
  * IN job_ptr - The updated job */
 extern int select_g_select_nodeinfo_set(job_record_t *job_ptr);
 
-/* Update slect plugin information about every node as needed (if changed since
+/* Update select plugin information about every node as needed (if changed since
  * previous query) */
 extern int select_g_select_nodeinfo_set_all(void);
 
 /*
- * Get information from a slect plugin node record
+ * Get information from a select plugin node record
  * IN nodeinfo - The record to get information from
  * IN dinfo - The data type to be retrieved
  * IN state - Node state filter to be applied (ie. only get information about

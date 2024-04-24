@@ -814,7 +814,7 @@ def test_delete_cluster_by_federation():
     assert next_match(rf"(?m)^ +Cluster += +{cluster1}")
     assert next_match(rf"(?m)^ +Cluster += +{cluster2}")
 
-    # Add second cluster to make sure selectin only on federation
+    # Add second cluster to make sure selection only on federation
     output = atf.run_command_output(
         f"sacctmgr -i add federation {federation3} clusters={cluster3},{cluster4}",
         user=atf.properties["slurm-user"],

@@ -2243,7 +2243,7 @@ if {$matches != 5} {
 	fail "Adding federation with clusters failed (got $matches)"
 }
 
-# add second cluster to make sure selectin only on federation
+# add second cluster to make sure selection only on federation
 set matches 0
 spawn $sacctmgr -i add federation $fed3 clusters=$tc3,$tc4
 expect {

@@ -61,7 +61,7 @@ sub get_new_config() {
 	my $end_cnt = 0;
 
 	open OLD_FILE, "$config_file" or
-		die "$config_file doesn't exsist!";
+		die "$config_file doesn't exists!";
 	open FILE, ">$new_config" or
 		die "Can't open $new_config";
 
@@ -231,7 +231,7 @@ configuration information from the input stream.
 
 Do not connect the standard output and error streams of each process back to
 the mpiexec.slurm process. Standard output and error will be respectively
-writte in files of the form job.ojobid and job.ejobid for batch jobs, and
+written in files of the form job.ojobid and job.ejobid for batch jobs, and
 directly to the controlling terminal for interactive jobs.
 
 =item B<-pernode>

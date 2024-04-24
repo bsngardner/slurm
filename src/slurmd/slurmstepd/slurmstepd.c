@@ -398,7 +398,7 @@ extern int stepd_cleanup(slurm_msg_t *msg, stepd_step_rec_t *step,
 
 	/*
 	 * This call is only done once per step since stepd_cleanup is protected
-	 * agains multiple and concurrent calls.
+	 * against multiple and concurrent calls.
 	 */
 	proctrack_g_destroy(step->cont_id);
 

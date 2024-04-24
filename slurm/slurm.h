@@ -778,7 +778,7 @@ enum acct_gather_profile_info {
 	ACCT_GATHER_PROFILE_DEFAULT, /* What is being collected for
 				      * profiling by default */
 	ACCT_GATHER_PROFILE_RUNNING  /* What is actually be collected
-				      * wither it be user or
+				      * whether it be user or
 				      * default. (Only works in the slurmstepd)
 				      */
 };

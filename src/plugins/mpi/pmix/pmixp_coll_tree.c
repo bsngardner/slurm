@@ -211,7 +211,7 @@ int pmixp_coll_tree_init(pmixp_coll_t *coll, hostlist_t **hl)
 			  &tree->prnt_peerid, &tree->chldrn_cnt, &depth,
 			  &max_depth);
 
-	/* We interested in amount of direct childs */
+	/* We interested in amount of direct children */
 	tree->contrib_children = 0;
 	tree->contrib_local = false;
 	tree->chldrn_ids = xmalloc(sizeof(int) * width);
@@ -262,7 +262,7 @@ int pmixp_coll_tree_init(pmixp_coll_t *coll, hostlist_t **hl)
 		tree->chldrn_str = NULL;
 	}
 
-	/* fixup children peer ids to te global ones */
+	/* fixup children peer ids to the global ones */
 	for(i=0; i<tree->chldrn_cnt; i++){
 		p = hostlist_nth(*hl, tree->chldrn_ids[i]);
 		tree->chldrn_ids[i] = pmixp_info_job_hostid(p);
@@ -807,7 +807,7 @@ static int _progress_dfwd(pmixp_coll_t *coll)
 	pmixp_coll_tree_t *tree = &coll->state.tree;
 	xassert(PMIXP_COLL_TREE_DOWNFWD == tree->state);
 
-	/* if all childrens + local callbacks was invoked */
+	/* if all children + local callbacks was invoked */
 	if (tree->dfwd_cb_wait == tree->dfwd_cb_cnt) {
 		tree->dfwd_status = PMIXP_COLL_TREE_SND_DONE;
 	}

@@ -173,7 +173,7 @@ other modules along with pam_slurm_adopt.
 
 <p>
 Stacking pam_access with pam_slurm_adopt is one way to permit administrative
-access, with two possible implementations with subtle differences in behavor.
+access, with two possible implementations with subtle differences in behavior.
 Both will require editing the pam_access configuration file
 (/etc/security/access.conf). In the following example, the access.conf file will
 allow members of the group "wheel" to log in.

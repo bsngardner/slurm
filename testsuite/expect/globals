@@ -4124,7 +4124,7 @@ proc list_to_range {numeric_list} {
 #		a node range expression accepted by scontrol
 #
 # RETURN VALUE
-#	a list contining all node names expanded from the node range expression
+#	a list containing all node names expanded from the node range expression
 #
 #####################################################################
 
@@ -6092,7 +6092,7 @@ proc get_nodes_by_request args {
 #
 # RETURN VALUE
 #	If the optional partition_name argument is specified, the result will
-#	contain only the one patition. Otherwise, the results for all
+#	contain only the one partition. Otherwise, the results for all
 #	partitions will be returned.
 #
 ################################################################

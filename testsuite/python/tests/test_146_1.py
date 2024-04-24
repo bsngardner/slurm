@@ -175,7 +175,7 @@ def test_limits(limit_name, limit_cpus, partition_nodes):
 @pytest.mark.parametrize("limit_name", ["MaxCPUsPerSocket", "MaxCPUsPerNode"])
 @pytest.mark.parametrize("limit_cpus", [0])
 def test_zero_cpu(limit_name, partition_nodes):
-    """Test the corener case of setting limit_name=0 means jobs cannot be submitted to that partition."""
+    """Test the corner case of setting limit_name=0 means jobs cannot be submitted to that partition."""
 
     # This is an undocumented corner case and shouldn't be used.
     # Setting the partition down, drain or inactive should be used instead.

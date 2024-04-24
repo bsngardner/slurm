@@ -2567,7 +2567,7 @@ static char *_get_aliased_nodename_fallback(char *hostname)
 	if (!he)
 		return NULL;
 
-	/* hunt throught the aliases list hoping for a match */
+	/* hunt through the aliases list hoping for a match */
 	for (int i = 0; he->h_aliases[i]; i++) {
 		if ((nodename = slurm_conf_get_nodename(he->h_aliases[i])))
 			break;

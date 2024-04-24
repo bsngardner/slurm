@@ -78,7 +78,7 @@ extern int _op_handler_reservations(const char *context_id,
 	if ((tag == URL_TAG_RESERVATION) &&
 	    !(name = get_str_param("reservation_name", ctxt))) {
 		resp_error(ctxt, ESLURM_RESERVATION_INVALID, __func__,
-			   "Reservation name is requied for singular query");
+			   "Reservation name is required for singular query");
 		goto done;
 	}
 

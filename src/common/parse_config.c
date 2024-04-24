@@ -1897,7 +1897,7 @@ int s_p_parse_pair(s_p_hashtbl_t *hashtbl, const char *key, const char *value)
 
 /* common checks for s_p_get_* returns NULL if invalid.
  *
- * Information concerning theses function can be found in the header file.
+ * Information concerning these function can be found in the header file.
  */
 static s_p_values_t* _get_check(slurm_parser_enum_t type,
 				const char* key, const s_p_hashtbl_t* hashtbl)
