@@ -5,7 +5,6 @@ import atf
 import os
 import pwd
 import pytest
-import re
 
 approved_account = "account1"
 unapproved_account = "account2"

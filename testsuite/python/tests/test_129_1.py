@@ -3,7 +3,6 @@
 ############################################################################
 import atf
 import pytest
-import re
 import os
 import pwd
 
@@ -20,7 +19,7 @@ def setup():
 def setup_account():
     test_user = pwd.getpwuid(os.getuid())[0]
     atf.run_command(
-        f"sacctmgr -vi add account test_account",
+        "sacctmgr -vi add account test_account",
         user=atf.properties["slurm-user"],
         fatal=True,
     )

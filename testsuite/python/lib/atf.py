@@ -4,19 +4,17 @@
 ##############################################################################
 import collections
 import errno
-import glob
 import logging
 import math
 import os
-import pwd
 import pathlib
+import pwd
 import pytest
 import re
 import shutil
-import stat
 import socket
+import stat
 import subprocess
-import sys
 import time
 import traceback
 
@@ -496,7 +494,7 @@ def start_slurmctld(clean=False, quiet=False):
         if not repeat_command_until(
             "scontrol ping", lambda results: re.search(r"is UP", results["stdout"])
         ):
-            pytest.fail(f"Slurmctld is not running")
+            pytest.fail("Slurmctld is not running")
 
 
 def start_slurm(clean=False, quiet=False):
@@ -548,7 +546,7 @@ def start_slurm(clean=False, quiet=False):
             if not repeat_command_until(
                 "sacctmgr show cluster", lambda results: results["exit_code"] == 0
             ):
-                pytest.fail(f"Slurmdbd is not running")
+                pytest.fail("Slurmdbd is not running")
 
     # Remove unnecessary default node0 from config to avoid being used or reserved
     output = run_command_output(
@@ -972,7 +970,7 @@ def get_config(live=True, source="slurm", quiet=False):
         output = run_command_output(f"{command} show config", fatal=True, quiet=quiet)
 
         for line in output.splitlines():
-            if match := re.search(rf"^\s*(\S+)\s*=\s*(.*)$", line):
+            if match := re.search(r"^\s*(\S+)\s*=\s*(.*)$", line):
                 slurm_dict[match.group(1)] = match.group(2).rstrip()
     else:
         config = source
@@ -984,7 +982,7 @@ def get_config(live=True, source="slurm", quiet=False):
             f"cat {config_file}", user=properties["slurm-user"], quiet=quiet
         )
         for line in output.splitlines():
-            if match := re.search(rf"^\s*(\S+)\s*=\s*(.*)$", line):
+            if match := re.search(r"^\s*(\S+)\s*=\s*(.*)$", line):
                 parameter_name, parameter_value = (
                     match.group(1),
                     match.group(2).rstrip(),
@@ -1158,7 +1156,7 @@ def set_config_parameter(
             ].items():
                 line += f" {subparameter_name}={subparameter_value}"
             lines.append(f"{line}\n")
-    elif parameter_value != None:
+    elif parameter_value is None:
         lines.append(f"{parameter_name}={parameter_value}\n")
     input = "".join(lines)
     run_command(
@@ -1408,7 +1406,7 @@ def require_config_parameter(
 
     condition_satisfied = False
     if condition is None:
-        condition = lambda observed, desired: observed == desired
+        # condition = lambda observed, desired: observed == desired
         if observed_value == parameter_value:
             condition_satisfied = True
     else:
@@ -2587,15 +2585,16 @@ def wait_for_node_state(
     """
 
     # Figure out if we're waiting for the desired_node_state to be present or to be gone
-    if reverse:
-        condition = lambda state: desired_node_state not in state.split("+")
-    else:
-        condition = lambda state: desired_node_state in state.split("+")
+    def has_state(state):
+        return desired_node_state in state.split("+")
+
+    def not_state(state):
+        return desired_node_state not in state.split("+")
 
     # Wrapper for the repeat_until command to do all our state checking for us
     repeat_until(
         lambda: get_node_parameter(nodename, "State"),
-        condition,
+        not_state if reverse else has_state,
         timeout=timeout,
         poll_interval=poll_interval,
         fatal=fatal,
@@ -3743,7 +3742,7 @@ if not os.path.isfile(testsuite_config_file):
     )
 with open(testsuite_config_file, "r") as f:
     for line in f.readlines():
-        if match := re.search(rf"^\s*(\w+)\s*=\s*(.*)$", line):
+        if match := re.search(r"^\s*(\w+)\s*=\s*(.*)$", line):
             testsuite_config[match.group(1).lower()] = match.group(2)
 if "slurmsourcedir" in testsuite_config:
     properties["slurm-source-dir"] = testsuite_config["slurmsourcedir"]
@@ -3785,7 +3784,7 @@ if not os.path.isfile(slurm_config_file):
 if os.access(slurm_config_file, os.R_OK):
     with open(slurm_config_file, "r") as f:
         for line in f.readlines():
-            if match := re.search(rf"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
+            if match := re.search(r"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
                 properties["slurm-user"] = match.group(1)
 else:
     # slurm.conf is not readable as test-user. We will try reading it as root
@@ -3795,7 +3794,7 @@ else:
     if results["exit_code"] == 0:
         pytest.fail(f"Unable to read {slurm_config_file}")
     for line in results["stdout"].splitlines():
-        if match := re.search(rf"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
+        if match := re.search(r"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
             properties["slurm-user"] = match.group(1)
 
 properties["submitted-jobs"] = []

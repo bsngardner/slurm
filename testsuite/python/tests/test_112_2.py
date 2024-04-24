@@ -3,16 +3,12 @@
 ############################################################################
 import atf
 import getpass
-import json
-import math
 import os
 import pathlib
 import pytest
 import re
 import requests
 import sys
-import time
-from pprint import pprint
 
 # avoid JWT for scontrol/sacctmgr calls
 if "SLURM_JWT" in os.environ:
@@ -38,7 +34,7 @@ def setup():
     global local_cluster_name, partition_name
 
     # Check skips early
-    if not "SLURM_TESTSUITE_SLURMRESTD_URL" in os.environ:
+    if "SLURM_TESTSUITE_SLURMRESTD_URL" not in os.environ:
         pytest.skip(
             "test requires env SLURM_TESTSUITE_SLURMRESTD_URL", allow_module_level=True
         )
@@ -81,7 +77,7 @@ def setup():
 
     assert r.status_code == 200
 
-    if not "SLURM_TESTSUITE_OPENAPI_CLIENT" in os.environ:
+    if "SLURM_TESTSUITE_OPENAPI_CLIENT" not in os.environ:
         # allow pointing to an existing OpenAPI generated client
         pyapi_path = "{}/pyapi/".format(atf.module_tmp_path)
         spec_path = "{}/openapi.json".format(atf.module_tmp_path)
@@ -111,9 +107,9 @@ def setup():
         pytest.skip("plugin v0.0.36 not supported", allow_module_level=True)
 
     # verify current plugins are loaded
-    if not "/slurm/v0.0.39/jobs" in spec["paths"].keys():
+    if "/slurm/v0.0.39/jobs" not in spec["paths"].keys():
         pytest.skip("plugin v0.0.39 required", allow_module_level=True)
-    if not "/slurmdb/v0.0.39/jobs" in spec["paths"].keys():
+    if "/slurmdb/v0.0.39/jobs" not in spec["paths"].keys():
         pytest.skip("plugin dbv0.0.39 required", allow_module_level=True)
 
     if not os.path.exists(spec_path):
@@ -177,14 +173,15 @@ def cleanup():
 
 
 def test_db_accounts():
-    import openapi_client
-    from openapi_client import ApiClient as Client
-    from openapi_client import Configuration as Config
+    # import openapi_client
+    # from openapi_client import ApiClient as Client
+    # from openapi_client import Configuration as Config
     from openapi_client.model.dbv0039_account_info import Dbv0039AccountInfo
     from openapi_client.model.v0039_account_list import V0039AccountList
     from openapi_client.model.v0039_account import V0039Account
-    from openapi_client.model.v0039_assoc_short import V0039AssocShort
-    from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
+
+    # from openapi_client.model.v0039_assoc_short import V0039AssocShort
+    # from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
     from openapi_client.model.v0039_coord import V0039Coord
     from openapi_client.model.v0039_coord_list import V0039CoordList
 
@@ -199,7 +196,7 @@ def test_db_accounts():
         fatal=False,
     )
 
-    # make sure account doesnt already exist
+    # make sure account does not already exist
     resp = slurm.slurmdb_v0039_get_account(path_params={"account_name": account2_name})
     assert resp.response.status == 200
     assert resp.body["warnings"]
@@ -358,7 +355,7 @@ def test_db_accounts():
 
 
 def get_slurm():
-    import openapi_client
+    # import openapi_client
     from openapi_client.apis.tags.slurm_api import SlurmApi
     from openapi_client import ApiClient as Client
     from openapi_client import Configuration as Config
@@ -370,9 +367,9 @@ def get_slurm():
 
 
 def test_db_diag():
-    import openapi_client
-    from openapi_client.model.dbv0039_diag import Dbv0039Diag
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.dbv0039_diag import Dbv0039Diag
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
     resp = slurm.slurmdb_v0039_diag()
@@ -383,8 +380,8 @@ def test_db_diag():
 
 
 def test_db_wckeys():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.v0039_wckey_list import V0039WckeyList
     from openapi_client.model.v0039_wckey import V0039Wckey
     from openapi_client.model.dbv0039_wckey_info import Dbv0039WckeyInfo
@@ -473,10 +470,9 @@ def test_db_wckeys():
 
 
 def test_db_clusters():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.dbv0039_clusters_info import Dbv0039ClustersInfo
-    from openapi_client.model.v0039_cluster_rec import V0039ClusterRec
     from openapi_client.model.v0039_cluster_rec_list import V0039ClusterRecList
     from openapi_client.model.v0039_cluster_rec import V0039ClusterRec
 
@@ -548,13 +544,14 @@ def test_db_clusters():
 
 
 def test_db_users():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.dbv0039_update_users import Dbv0039UpdateUsers
-    from openapi_client.model.v0039_assoc_short import V0039AssocShort
-    from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
-    from openapi_client.model.v0039_coord import V0039Coord
-    from openapi_client.model.v0039_coord_list import V0039CoordList
+
+    # from openapi_client.model.v0039_assoc_short import V0039AssocShort
+    # from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
+    # from openapi_client.model.v0039_coord import V0039Coord
+    # from openapi_client.model.v0039_coord_list import V0039CoordList
     from openapi_client.model.v0039_user import V0039User
     from openapi_client.model.v0039_user_list import V0039UserList
     from openapi_client.model.v0039_wckey_list import V0039WckeyList
@@ -693,20 +690,21 @@ def test_db_users():
 
 
 def test_db_assoc():
-    import openapi_client
-    from openapi_client.model.status import Status
-    from openapi_client.model.dbv0039_update_users import Dbv0039UpdateUsers
+    # import openapi_client
+    # from openapi_client.model.status import Status
+    # from openapi_client.model.dbv0039_update_users import Dbv0039UpdateUsers
     from openapi_client.model.dbv0039_associations_info import Dbv0039AssociationsInfo
     from openapi_client.model.v0039_assoc_list import V0039AssocList
     from openapi_client.model.v0039_assoc import V0039Assoc
-    from openapi_client.model.v0039_assoc_short import V0039AssocShort
-    from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
-    from openapi_client.model.v0039_coord import V0039Coord
-    from openapi_client.model.v0039_coord_list import V0039CoordList
-    from openapi_client.model.v0039_user import V0039User
-    from openapi_client.model.v0039_user_list import V0039UserList
-    from openapi_client.model.v0039_wckey_list import V0039WckeyList
-    from openapi_client.model.v0039_wckey import V0039Wckey
+
+    # from openapi_client.model.v0039_assoc_short import V0039AssocShort
+    # from openapi_client.model.v0039_assoc_short_list import V0039AssocShortList
+    # from openapi_client.model.v0039_coord import V0039Coord
+    # from openapi_client.model.v0039_coord_list import V0039CoordList
+    # from openapi_client.model.v0039_user import V0039User
+    # from openapi_client.model.v0039_user_list import V0039UserList
+    # from openapi_client.model.v0039_wckey_list import V0039WckeyList
+    # from openapi_client.model.v0039_wckey import V0039Wckey
     from openapi_client.model.v0039_qos_string_id_list import V0039QosStringIdList
     from openapi_client.model.v0039_uint32_no_val import V0039Uint32NoVal
 
@@ -987,8 +985,8 @@ def test_db_assoc():
 
 
 def test_db_qos():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.v0039_qos import V0039Qos
     from openapi_client.model.v0039_qos_list import V0039QosList
     from openapi_client.model.v0039_tres_list import V0039TresList
@@ -1171,7 +1169,7 @@ def test_db_qos():
 
 
 def test_db_tres():
-    import openapi_client
+    # import openapi_client
 
     slurm = get_slurm()
 
@@ -1182,7 +1180,7 @@ def test_db_tres():
 
 
 def test_db_config():
-    import openapi_client
+    # import openapi_client
 
     slurm = get_slurm()
 
@@ -1193,18 +1191,22 @@ def test_db_config():
 
 
 def test_jobs():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.v0039_job_submission import V0039JobSubmission
-    from openapi_client.model.v0039_job_submission_response import (
-        V0039JobSubmissionResponse,
-    )
+
+    # from openapi_client.model.v0039_job_submission_response import (
+    #     V0039JobSubmissionResponse,
+    # )
     from openapi_client.model.v0039_job_desc_msg import V0039JobDescMsg
-    from openapi_client.model.v0039_job_desc_msg_list import V0039JobDescMsgList
+
+    # from openapi_client.model.v0039_job_desc_msg_list import V0039JobDescMsgList
     from openapi_client.model.v0039_string_array import V0039StringArray
-    from openapi_client.model.v0039_job_info import V0039JobInfo
+
+    # from openapi_client.model.v0039_job_info import V0039JobInfo
     from openapi_client.model.v0039_uint32_no_val import V0039Uint32NoVal
-    from openapi_client.model.v0039_job_info_msg import V0039JobInfoMsg
+
+    # from openapi_client.model.v0039_job_info_msg import V0039JobInfoMsg
 
     slurm = get_slurm()
 
@@ -1342,8 +1344,8 @@ def test_jobs():
 
 
 def test_resv():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
 
@@ -1372,8 +1374,8 @@ def test_resv():
 
 
 def test_partitions():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
 
@@ -1395,8 +1397,8 @@ def test_partitions():
 
 
 def test_nodes():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
     from openapi_client.model.v0039_update_node_msg import V0039UpdateNodeMsg
     from openapi_client.model.v0039_csv_list import V0039CsvList
 
@@ -1414,7 +1416,7 @@ def test_nodes():
             extra = node["extra"]
             feat = node["features"]
             actfeat = node["active_features"]
-            state = node["state"]
+            # state = node["state"]
             reason = node["reason"]
             reasonuid = node["reason_set_by_user"]
             break
@@ -1490,8 +1492,8 @@ def test_nodes():
 
 
 def test_ping():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
 
@@ -1502,8 +1504,8 @@ def test_ping():
 
 
 def test_diag():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
 
@@ -1515,8 +1517,8 @@ def test_diag():
 
 
 def test_licenses():
-    import openapi_client
-    from openapi_client.model.status import Status
+    # import openapi_client
+    # from openapi_client.model.status import Status
 
     slurm = get_slurm()
 

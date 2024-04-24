@@ -17,10 +17,10 @@ def setup():
     atf.require_slurm_running()
 
 
-def write_host_file(matchs):
+def write_host_file(matches):
     host_file = atf.module_tmp_path / "host_file"
     hf = open(host_file, "w")
-    for line in matchs:
+    for line in matches:
         hf.write(line[1] + "\n")
     hf.seek(0)
     hf.close
@@ -42,7 +42,7 @@ def test_hostfile():
     write_host_file(matches)
 
     # Test pass 1
-    output = atf.run_job_output(f"-l --distribution=arbitrary printenv SLURMD_NODENAME")
+    output = atf.run_job_output("-l --distribution=arbitrary printenv SLURMD_NODENAME")
     matches = re.findall(r"(\d+): (\S+)", output)
     for match in matches:
         assert (
@@ -59,7 +59,7 @@ def test_hostfile():
     write_host_file(matches)
 
     # Test pass 2
-    output = atf.run_job_output(f"-l --distribution=arbitrary printenv SLURMD_NODENAME")
+    output = atf.run_job_output("-l --distribution=arbitrary printenv SLURMD_NODENAME")
     matches = re.findall(r"(\d+): (\S+)", output)
     for match in matches:
         assert (

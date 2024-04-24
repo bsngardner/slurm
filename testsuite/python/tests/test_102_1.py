@@ -146,7 +146,7 @@ def test_add_second_federation():
     assert next_match(rf"(?m)^ +{federation2}")
 
     output = atf.run_command_output(
-        f"sacctmgr show federation format=federation%20",
+        "sacctmgr show federation format=federation%20",
         user=atf.properties["slurm-user"],
     )
     assert first_match("Federation", output)
@@ -273,7 +273,7 @@ def test_modify_cluster_fedstate():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +FedState += +DRAIN")
+    assert next_match(r"(?m)^ +FedState += +DRAIN")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
     assert next_match(rf"(?m)^ +{cluster3}")
@@ -283,7 +283,7 @@ def test_modify_cluster_fedstate():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +FedState += +DRAIN\+REMOVE")
+    assert next_match(r"(?m)^ +FedState += +DRAIN\+REMOVE")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster2}")
 
@@ -292,7 +292,7 @@ def test_modify_cluster_fedstate():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +FedState += +ACTIVE")
+    assert next_match(r"(?m)^ +FedState += +ACTIVE")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
 
@@ -431,7 +431,7 @@ def test_modify_cluster_clear_federation():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +Federation += +$")
+    assert next_match(r"(?m)^ +Federation += +$")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster3}")
 
@@ -610,7 +610,7 @@ def test_set_state_inactive():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +FedState += +INACTIVE")
+    assert next_match(r"(?m)^ +FedState += +INACTIVE")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster4}")
 
@@ -950,7 +950,7 @@ def test_delete_federation():
     assert re.search(rf"(?m)^ +{federation1} +$", output) is None
 
     output = atf.run_command_output(
-        f"sacctmgr show cluster format=cluster%20,federation%20",
+        "sacctmgr show cluster format=cluster%20,federation%20",
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Cluster +Federation", output)
@@ -988,8 +988,8 @@ def test_add_modify_cluster_features():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +Feature += +aa")
-    assert next_match(rf"(?m)^ +Feature += +ab")
+    assert next_match(r"(?m)^ +Feature += +aa")
+    assert next_match(r"(?m)^ +Feature += +ab")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
 
@@ -1005,7 +1005,7 @@ def test_add_modify_cluster_features():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +Feature +\+= +fc")
+    assert next_match(r"(?m)^ +Feature +\+= +fc")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
 
@@ -1021,7 +1021,7 @@ def test_add_modify_cluster_features():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +Feature +-= +ab")
+    assert next_match(r"(?m)^ +Feature +-= +ab")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
 
@@ -1037,8 +1037,8 @@ def test_add_modify_cluster_features():
         user=atf.properties["slurm-user"],
     )
     assert first_match(r"Setting", output)
-    assert next_match(rf"(?m)^ +Feature +-= +aa")
-    assert next_match(rf"(?m)^ +Feature +-= +fc")
+    assert next_match(r"(?m)^ +Feature +-= +aa")
+    assert next_match(r"(?m)^ +Feature +-= +fc")
     assert next_match(r"Modified cluster\.\.\.")
     assert next_match(rf"(?m)^ +{cluster1}")
 

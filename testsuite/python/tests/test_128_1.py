@@ -3,7 +3,6 @@
 ############################################################################
 import atf
 import pytest
-import re
 import time
 
 

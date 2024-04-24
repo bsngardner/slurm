@@ -1,7 +1,6 @@
 ############################################################################
 # Copyright (C) SchedMD LLC.
 ############################################################################
-import sys
 from math import floor
 
 COL1 = 48
@@ -28,6 +27,7 @@ CLR_PASS = Colors.CYAN
 CLR_FAIL = Colors.RED
 CLR_SKIP = Colors.BLUE
 CLR_RESET = Colors.RESET
+CLR_WARN = Colors.RED
 
 
 def color_state(state, msg):
