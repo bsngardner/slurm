@@ -6,7 +6,7 @@
 #    X_AC_ENV_LOGIC
 #
 #  DESCRIPTION:
-#    Test for how user's environment should be loaded for sbatch's 
+#    Test for how user's environment should be loaded for sbatch's
 #    --get-user-env option (as used by Moab)
 ##*****************************************************************************
 
