@@ -216,9 +216,9 @@ SLURM_MINOR="`perl -ne 'print,exit if s/^\s*MINOR:\s*(\S*).*/\1/i' $srcdir/META`
 SLURM_MICRO="`perl -ne 'print,exit if s/^\s*MICRO:\s*(\S*).*/\1/i' $srcdir/META`"
 RELEASE="`perl -ne 'print,exit if s/^\s*RELEASE:\s*(\S*).*/\1/i' $srcdir/META`"
 
-# NOTE: SLURM_VERSION_NUMBER excludes any non-numeric component 
-# (e.g. "pre1" in the MICRO), but may be suitable for the user determining 
-# how to use the APIs or other differences. 
+# NOTE: SLURM_VERSION_NUMBER excludes any non-numeric component
+# (e.g. "pre1" in the MICRO), but may be suitable for the user determining
+# how to use the APIs or other differences.
 SLURM_VERSION_NUMBER="`printf "0x%02x%02x%02x" ${SLURM_MAJOR#0} ${SLURM_MINOR#0} ${SLURM_MICRO#0}`"
 AC_DEFINE_UNQUOTED(SLURM_VERSION_NUMBER, $SLURM_VERSION_NUMBER, [Slurm Version Number])
 AC_SUBST(SLURM_VERSION_NUMBER)
@@ -228,16 +228,16 @@ if test "$SLURM_MAJOR.$SLURM_MINOR.$SLURM_MICRO" != "$VERSION"; then
 fi
 
 # Check to see if we're on an unstable branch (no prereleases yet)
-if echo "$RELEASE" | grep -e "UNSTABLE"; then 
+if echo "$RELEASE" | grep -e "UNSTABLE"; then
    DATE=`date +"%Y%m%d%H%M"`
-   SLURM_RELEASE="unstable svn build $DATE" 
+   SLURM_RELEASE="unstable svn build $DATE"
    SLURM_VERSION_STRING="$SLURM_MAJOR.$SLURM_MINOR ($SLURM_RELEASE)"
 else
    SLURM_RELEASE="`echo $RELEASE | sed 's/^0\.//'`"
    SLURM_VERSION_STRING="$SLURM_MAJOR.$SLURM_MINOR.$SLURM_MICRO"
    test $RELEASE = "1" || SLURM_VERSION_STRING="$SLURM_VERSION_STRING-$SLURM_RELEASE"
 fi
-AC_DEFINE_UNQUOTED(SLURM_MAJOR, "$SLURM_MAJOR", 
+AC_DEFINE_UNQUOTED(SLURM_MAJOR, "$SLURM_MAJOR",
                    [Define the project's major version.])
 AC_DEFINE_UNQUOTED(SLURM_MINOR, "$SLURM_MINOR",
                    [Define the project's minor version.])
@@ -254,7 +254,7 @@ AC_SUBST(RELEASE)
 AC_SUBST(SLURM_VERSION_STRING)
 
 ]) dnl AC_SLURM_VERSION
- 
+
 dnl
 dnl Test if we want to include rpath in the executables (default=yes)
 dnl Doing so is generally discouraged due to problems this causes in upgrading

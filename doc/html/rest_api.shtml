@@ -223,7 +223,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -316,7 +316,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -403,7 +403,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_diag_resp">v0.0.40_openapi_diag_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -608,7 +608,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_job_info_resp">v0.0.40_openapi_job_info_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -1394,7 +1394,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_job_info_resp">v0.0.40_openapi_job_info_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -2172,7 +2172,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_licenses_resp">v0.0.40_openapi_licenses_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -2299,7 +2299,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_nodes_resp">v0.0.40_openapi_nodes_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -2644,7 +2644,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_nodes_resp">v0.0.40_openapi_nodes_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -2993,7 +2993,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_partition_resp">v0.0.40_openapi_partition_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -3332,7 +3332,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_partition_resp">v0.0.40_openapi_partition_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -3665,7 +3665,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_ping_array_resp">v0.0.40_openapi_ping_array_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -3763,7 +3763,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -3862,7 +3862,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_reservation_resp">v0.0.40_openapi_reservation_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4049,7 +4049,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_reservation_resp">v0.0.40_openapi_reservation_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4238,7 +4238,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_shares_resp">v0.0.40_openapi_shares_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4482,7 +4482,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_job_post_response">v0.0.40_openapi_job_post_response</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4598,7 +4598,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_job_submit_response">v0.0.40_openapi_job_submit_response</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4714,7 +4714,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4808,7 +4808,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_accounts_removed_resp">v0.0.40_openapi_accounts_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -4936,7 +4936,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_assocs_removed_resp">v0.0.40_openapi_assocs_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5064,7 +5064,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_assocs_removed_resp">v0.0.40_openapi_assocs_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5182,7 +5182,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_clusters_removed_resp">v0.0.40_openapi_clusters_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5276,7 +5276,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_qos_removed_resp">v0.0.40_openapi_slurmdbd_qos_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5370,7 +5370,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5463,7 +5463,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_wckey_removed_resp">v0.0.40_openapi_wckey_removed_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5567,7 +5567,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_accounts_resp">v0.0.40_openapi_accounts_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5717,7 +5717,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_accounts_resp">v0.0.40_openapi_accounts_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -5895,7 +5895,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_assocs_resp">v0.0.40_openapi_assocs_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -6415,7 +6415,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_assocs_resp">v0.0.40_openapi_assocs_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -6925,7 +6925,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_clusters_resp">v0.0.40_openapi_clusters_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -7097,7 +7097,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_clusters_resp">v0.0.40_openapi_clusters_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -7245,7 +7245,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_config_resp">v0.0.40_openapi_slurmdbd_config_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -8590,7 +8590,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_stats_resp">v0.0.40_openapi_slurmdbd_stats_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -8737,7 +8737,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_instances_resp">v0.0.40_openapi_instances_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -8857,7 +8857,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_instances_resp">v0.0.40_openapi_instances_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -8971,7 +8971,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_jobs_resp">v0.0.40_openapi_slurmdbd_jobs_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -10265,7 +10265,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_jobs_resp">v0.0.40_openapi_slurmdbd_jobs_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -11489,7 +11489,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_qos_resp">v0.0.40_openapi_slurmdbd_qos_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -12061,7 +12061,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_slurmdbd_qos_resp">v0.0.40_openapi_slurmdbd_qos_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -12621,7 +12621,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_tres_resp">v0.0.40_openapi_tres_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -12737,7 +12737,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_users_resp">v0.0.40_openapi_users_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13029,7 +13029,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_users_resp">v0.0.40_openapi_users_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13307,7 +13307,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_wckey_resp">v0.0.40_openapi_wckey_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13481,7 +13481,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_wckey_resp">v0.0.40_openapi_wckey_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13644,7 +13644,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13744,7 +13744,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_accounts_add_cond_resp_str">v0.0.40_openapi_accounts_add_cond_resp_str</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13845,7 +13845,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -13945,7 +13945,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14045,7 +14045,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14145,7 +14145,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14245,7 +14245,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14345,7 +14345,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14445,7 +14445,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_users_add_cond_resp_str">v0.0.40_openapi_users_add_cond_resp_str</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14546,7 +14546,7 @@
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#v0.0.40_openapi_resp">v0.0.40_openapi_resp</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -14808,7 +14808,7 @@
 <div class="param">organization </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -14861,7 +14861,7 @@
 <div class="param">default (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_assoc_default">v0_0_40_assoc_default</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">max (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_assoc_max">v0_0_40_assoc_max</a></span>  </div>
 <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_assoc_short">v0.0.40_assoc_short</a></span>  </div>
 <div class="param">is_default (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
@@ -14921,7 +14921,7 @@
 <div class="param">fairshare (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_assoc_shares_obj_wrap_fairshare">v0_0_40_assoc_shares_obj_wrap_fairshare</a></span>  </div>
 <div class="param">type (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span> user or account association </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -14954,7 +14954,7 @@
       <div class="param">controller (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_cluster_rec_controller">v0_0_40_cluster_rec_controller</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">nodes (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">select_plugin (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -14987,7 +14987,7 @@
     <div class="field-items">
       <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">minute (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">hour (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">day_of_month (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15049,7 +15049,7 @@
 <div class="param">failed_node (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">group (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">het (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_job_het">v0_0_40_job_het</a></span>  </div>
 <div class="param">job_id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
@@ -15100,7 +15100,7 @@
 <div class="param">begin_time (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint64_no_val">v0.0.40_uint64_no_val</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">burst_buffer (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">clusters (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">cluster_constraint (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15113,7 +15113,7 @@
 <div class="param">cpu_binding (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">cpu_binding_flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">cpu_frequency (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">cpus_per_tres (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">crontab (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_cron_entry">v0.0.40_cron_entry</a></span>  </div>
@@ -15134,13 +15134,13 @@
 <div class="param">licenses (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">mail_type (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">mail_user (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">mcs_label (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">memory_binding (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">memory_binding_type (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">memory_per_tres (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">network (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15148,19 +15148,19 @@
 <div class="param">tasks (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">open_mode (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">reserve_ports (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">overcommit (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">partition (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">distribution_plane_size (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">power_flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">prefer (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">priority (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
 <div class="param">profile (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">qos (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">reboot (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">required_nodes (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
@@ -15169,10 +15169,10 @@
 <div class="param">script (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">shared (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">exclusive (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">oversubscribe (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">site_factor (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">spank_environment (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
@@ -15189,7 +15189,7 @@
 <div class="param">wait_all_nodes (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">kill_warning_flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">kill_warning_signal (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">kill_warning_delay (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint16_no_val">v0.0.40_uint16_no_val</a></span>  </div>
 <div class="param">current_working_directory (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15221,7 +15221,7 @@
 <div class="param">wckey (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">x11 (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">x11_magic_cookie (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">x11_target_host (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">x11_target_port (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
@@ -15245,7 +15245,7 @@
 <div class="param">batch_host (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">burst_buffer (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">burst_buffer_state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">cluster (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15290,12 +15290,12 @@
 <div class="param">job_size_str (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
 <div class="param">job_state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">last_sched_evaluation (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint64_no_val">v0.0.40_uint64_no_val</a></span>  </div>
 <div class="param">licenses (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">mail_type (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">mail_user (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">max_cpus (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
 <div class="param">max_nodes (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
@@ -15326,7 +15326,7 @@
 <div class="param">priority (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
 <div class="param">profile (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">qos (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">reboot (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">required_nodes (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15339,14 +15339,14 @@
 <div class="param">selinux_context (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">shared (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">exclusive (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">oversubscribe (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">show_flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">sockets_per_board (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">sockets_per_node (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint16_no_val">v0.0.40_uint16_no_val</a></span>  </div>
 <div class="param">start_time (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint64_no_val">v0.0.40_uint64_no_val</a></span>  </div>
@@ -15456,12 +15456,12 @@
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">next_state_after_reboot (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">address (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">hostname (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">operating_system (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">owner (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">partitions (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
@@ -15890,7 +15890,7 @@
     <div class="field-items">
       <div class="param">status (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span> Status given by return code </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">return_code (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
 <div class="param">signal (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_process_exit_code_verbose_signal">v0_0_40_process_exit_code_verbose_signal</a></span>  </div>
     </div>  <!-- field-items -->
@@ -15902,7 +15902,7 @@
       <div class="param">description (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">id (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">limits (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_qos_limits">v0_0_40_qos_limits</a></span>  </div>
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -15932,7 +15932,7 @@
 <div class="param">features (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">groups (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">licenses (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">max_start_delay (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
@@ -16078,7 +16078,7 @@
 <div class="param">kill_request_user (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">statistics (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_step_statistics">v0_0_40_step_statistics</a></span>  </div>
 <div class="param">step (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_step_step">v0_0_40_step_step</a></span>  </div>
 <div class="param">task (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_step_task">v0_0_40_step_task</a></span>  </div>
@@ -16137,7 +16137,7 @@
 <div class="param">name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
 <div class="param">state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span> assign new node state </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">reason (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> reason for node being DOWN or DRAINING </div>
 <div class="param">reason_uid (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> user ID of sending (needed if user root is sending message) </div>
 <div class="param">resume_after (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
@@ -16150,13 +16150,13 @@
     <div class="field-items">
       <div class="param">administrator_level (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">associations (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_assoc_short">array[v0.0.40_assoc_short]</a></span>  </div>
 <div class="param">coordinators (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_coord">array[v0.0.40_coord]</a></span>  </div>
 <div class="param">default (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0_0_40_user_default">v0_0_40_user_default</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">name </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">old_name (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">wckeys (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_wckey">array[v0.0.40_wckey]</a></span>  </div>
@@ -16168,7 +16168,7 @@
     <div class="field-items">
       <div class="param">adminlevel (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span> Admin level of user.  Valid levels are None, Operator, and Admin. </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">defaultaccount (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Identify the default bank account name to be used for a job if none is specified at submission time. </div>
 <div class="param">defaultwckey (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> Identify the default Workload Characterization Key. </div>
     </div>  <!-- field-items -->
@@ -16196,7 +16196,7 @@
 <div class="param">user </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -16206,7 +16206,7 @@
       <div class="param">wckey </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> WCKey name </div>
 <div class="param">flags </div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span> Active flags </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -16425,7 +16425,7 @@
     <div class="field-items">
       <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -16458,7 +16458,7 @@
     <div class="field-items">
       <div class="param">current (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">reason (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
@@ -16588,7 +16588,7 @@
       <div class="param">jobs (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">flags (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -16613,7 +16613,7 @@
     <div class="field-items">
       <div class="param">state (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -16789,7 +16789,7 @@
       <div class="param">list (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
 <div class="param">mode (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
-        
+
 <div class="param">exempt_time (optional)</div><div class="param-desc"><span class="param-type"><a href="#v0.0.40_uint32_no_val">v0.0.40_uint32_no_val</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
@@ -16971,6 +16971,6 @@
 <div class="param">wckey (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
-  
+
 
 </body> <!--#include virtual="footer.txt"-->

@@ -6,10 +6,10 @@
 #    X_AC_PRINTF_NULL
 #
 #  DESCRIPTION:
-#    Test that printf("%s\n", NULL); does not result in invalid memory 
-#    reference. This is a known issue in Open Solaris version 118 and  
-#    some other operating systems. The potential for this problem exists 
-#    in hundreds of places in the SLURM code, so the ideal place to 
+#    Test that printf("%s\n", NULL); does not result in invalid memory
+#    reference. This is a known issue in Open Solaris version 118 and
+#    some other operating systems. The potential for this problem exists
+#    in hundreds of places in the SLURM code, so the ideal place to
 #    address it is in the underlying print functions.
 ##*****************************************************************************
 
