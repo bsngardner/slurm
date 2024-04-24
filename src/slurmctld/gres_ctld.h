@@ -43,7 +43,7 @@ typedef struct gres_ctld_step_test_args {
 	uint16_t cpus_per_task; /* IN cpus_per_task - number of CPUs required
 				 * per task */
 	int *err_code; /* OUT err_code - If an error occurred, set this to tell
-			* the caller why the error happend. */
+			* the caller why the error happened. */
 	bool first_step_node; /* IN first_step_node - true if this is node zero
 			       * of the step (do initing) */
 	bool ignore_alloc; /* IN ignore_alloc - if set ignore resources already

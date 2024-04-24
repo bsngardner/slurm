@@ -3165,7 +3165,7 @@ extern int jobacct_storage_p_step_start(void *db_conn, step_record_t *step_ptr)
 	req.db_index    = step_ptr->job_ptr->db_index;
 	req.name        = step_ptr->name;
 	req.nodes       = node_list;
-	/* reate req->node_inx outside of locks when packing */
+	/* create req->node_inx outside of locks when packing */
 	req.node_cnt    = nodes;
 	if (step_ptr->start_time > step_ptr->job_ptr->resize_time)
 		req.start_time = step_ptr->start_time;

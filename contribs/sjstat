@@ -482,7 +482,7 @@ The following is a basic request for status.
  	User		owner of the job
  	Nodes		nodes required, or in use by the job
 			(Note: On cpu scheduled machines, this field
-			will be labled "Procs" show the number of processors
+			will be labeled "Procs" show the number of processors
 			the job is using.)
  	Pool 		the Pool  required or in use by the job
  	Status		current status of the job

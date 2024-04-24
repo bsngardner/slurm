@@ -91,7 +91,7 @@ int node_record_count = 0;		/* number of node slots in
 					 * node_record_table_ptr */
 int active_node_record_count = 0;	/* non-null node count in
 					 * node_record_table_ptr */
-int last_node_index = -1;		/* index of last node in tabe */
+int last_node_index = -1;		/* index of last node in table */
 uint16_t *cr_node_num_cores = NULL;
 uint32_t *cr_node_cores_offset = NULL;
 bool spec_cores_first = false;

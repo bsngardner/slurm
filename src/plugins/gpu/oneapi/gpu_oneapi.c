@@ -446,7 +446,7 @@ static void _oneapi_print_freq_range(zes_freq_handle_t freq_handler,
  * Set frequency for the GPU
  *
  * device      	(IN) The device handle
- * reset       	(IN) If ture, the device will be reset to default frequencies
+ * reset       	(IN) If true, the device will be reset to default frequencies
  * gpu_freq_num (IN) The gpu frequency code. It will be ingorned
 		if reset is true.
  * mem_freq_num (IN) The memory frequency code. It will be ingorned

@@ -2721,7 +2721,7 @@ extern void mod_tres_str(char **out, char *mod, char *cur,
  * MySQL version 5.6.48 and 5.7.30 introduced a regression in the
  * implementation of CONCAT() that will lead to incorrect NULL values.
  *
- * We cannot safely work around this mistake without restructing our stored
+ * We cannot safely work around this mistake without restructuring our stored
  * procedures, and thus fatal() here to avoid a segfault.
  *
  * Test that concat() is working as expected, rather than trying to blacklist

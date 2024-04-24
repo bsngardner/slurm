@@ -699,7 +699,7 @@ extern void configless_clear(void)
 	slurm_rwlock_unlock(&configless_lock);
 }
 
-/* _kill_job_on_msg_fail - The request to create a job record successed,
+/* _kill_job_on_msg_fail - The request to create a job record successful,
  *	but the reply message to srun failed. We kill the job to avoid
  *	leaving it orphaned */
 static void _kill_job_on_msg_fail(uint32_t job_id)

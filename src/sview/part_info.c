@@ -2009,7 +2009,7 @@ need_refresh:
 
 	if (!found) {
 		if (!popup_win->not_found) {
-			char *temp = "PARTITION DOESN'T EXSIST\n";
+			char *temp = "PARTITION DOESN'T EXISTS\n";
 			GtkTreeIter iter;
 			GtkTreeModel *model = NULL;
 

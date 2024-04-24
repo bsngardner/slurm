@@ -4589,7 +4589,7 @@ static uid_t _get_job_uid(uint32_t jobid)
  * _kill_all_active_steps - signals the container of all steps of a job
  * jobid IN - id of job to signal
  * sig   IN - signal to send
- * flags IN - to decide if batch step must be signaled, if its childs too, etc
+ * flags IN - to decide if batch step must be signaled, if its children too, etc
  * batch IN - if true signal batch script, otherwise skip it
  * RET count of signaled job steps (plus batch script, if applicable)
  */
