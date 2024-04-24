@@ -1,0 +1,36 @@
+---
+exclude: configure|Makefile.in
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+  - id: check-merge-conflict
+  # - id: check-executables-have-shebangs
+  # - id: check-shebang-scripts-are-executable
+  # - id: check-symlinks
+  #- id: end-of-file-fixer
+  - id: trailing-whitespace
+- repo: https://github.com/psf/black
+  rev: 24.4.1
+  hooks:
+  - id: black
+    language_version: python3
+- repo: https://github.com/pycqa/flake8
+  rev: 7.0.0
+  hooks:
+  - id: flake8
+    args: [--config, ./testsuite/.flake8]
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.6
+  hooks:
+  - id: codespell
+    exclude_types: [gif,tar,png,pdf,svg]
+    exclude: auxdir|expect/globals|jquery\.min\.js
+    args: [--config, .codespellrc]
+  - id: codespell
+    alias: codespell-apply
+    exclude_types: [gif,tar,png,pdf,svg]
+    exclude: auxdir|expect/globals|jquery\.min\.js
+    args: [--config, .codespellrc, -w]
+    stages: [manual]
