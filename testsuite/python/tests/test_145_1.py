@@ -15,14 +15,14 @@ def setup():
 
 def get_nnodes(output):
     match = re.search(r"SLURM_NNODES=(\d)", output)
-    if match == None:
+    if match is None:
         return 0
     return int(match.group(1))
 
 
 def get_nodelist(output):
     match = re.search(r"SLURM_JOB_NODELIST=.*\[(.*)\]", output)
-    if match == None:
+    if match is None:
         return ""
     return match.group(1)
 
@@ -105,4 +105,4 @@ def test_bad_constraint(f1, f2):
 
     assert (
         "Invalid feature specification" in output
-    ), f"Verify that 'Invalid feature specification' message"
+    ), "Verify that 'Invalid feature specification' message"

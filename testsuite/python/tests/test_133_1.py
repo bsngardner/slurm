@@ -2,10 +2,11 @@
 # Copyright (C) SchedMD LLC.
 ############################################################################
 import atf
-import pathlib
 import os
 import pytest
 import re
+
+# from pathlib import Path
 
 
 @pytest.fixture(scope="function")
@@ -20,7 +21,7 @@ def compiled_program(tmp_path):
 @pytest.mark.parametrize("test_case", list(range(1, 6)))
 def test_topologyparam_routetree(compiled_program, test_case):
     """Test the TopologyParam=RouteTree"""
-    cwd = str(pathlib.Path(__file__).resolve().parent)
+    # cwd = str(pathlib.Path(__file__).resolve().parent)
     test_dir = os.path.splitext(__file__)[0] + f"_testcases/testcase{test_case}"
     error = atf.run_command_error(
         f"{compiled_program} --configdir={test_dir} --testcases={test_dir}/testcases",

@@ -3,7 +3,6 @@
 ############################################################################
 
 import atf
-import os
 import pytest
 import re
 
@@ -128,7 +127,7 @@ def test_file_io_options(
     # Build job script that will make content for both output and error files
     atf.make_bash_script(
         "original_in_file",
-        f"""
+        """
         id
         sleep aaa
         """,

@@ -4,19 +4,17 @@
 ##############################################################################
 import collections
 import errno
-import glob
 import logging
 import math
 import os
-import pwd
 import pathlib
+import pwd
 import pytest
 import re
 import shutil
-import stat
 import socket
+import stat
 import subprocess
-import sys
 import time
 import traceback
 
@@ -114,7 +112,6 @@ def run_command(
     user=None,
     input=None,
     xfail=False,
-    env_vars=None,
 ):
     """Executes a command and returns a dictionary result.
 
@@ -132,8 +129,6 @@ def run_command(
            the invoking user to have unprompted sudo rights.
        input (string): The specified input is supplied to the command as stdin.
        xfail (boolean): If True, the command is expected to fail.
-       env_vars (string): A string to set environmental variables that is
-            prepended to the command when run.
 
     Returns:
         A dictionary containing the following keys:
@@ -169,9 +164,6 @@ def run_command(
         log_command_level = logging.NOTE
         log_details_level = logging.DEBUG
 
-    if env_vars is not None:
-        command = env_vars.strip() + " " + command
-
     start_time = time.time()
     invocation_message = "Running command"
     if user is not None:
@@ -185,9 +177,8 @@ def run_command(
                     "This test requires the test user to have unprompted sudo rights",
                     allow_module_level=True,
                 )
-            # Use su to honor ulimits, specially core
             cp = subprocess.run(
-                ["sudo", "su", user, "/bin/bash", "-lc", command],
+                ["sudo", "-nu", user, "/bin/bash", "-lc", command],
                 capture_output=True,
                 text=True,
                 **additional_run_kwargs,
@@ -342,7 +333,6 @@ def repeat_until(
     condition,
     timeout=default_polling_timeout,
     poll_interval=None,
-    xfail=False,
     fatal=False,
 ):
     """Repeats a callable until a condition is met or it times out.
@@ -359,9 +349,7 @@ def repeat_until(
         poll_interval (float): Number of seconds to wait between condition
             polls. This may be a decimal fraction. The default poll interval
             depends on the timeout used, but varies between .1 and 1 seconds.
-        xfail (boolean): If True, a timeout is expected.
-        fatal (boolean): If True, the test will fail if condition is not met
-            (or if condition is met with xfail).
+        fatal (boolean): If True, a timeout will result in the test failing.
 
     Returns:
         True if the condition is met by the timeout, False otherwise.
@@ -381,31 +369,16 @@ def repeat_until(
         else:
             poll_interval = 1
 
-    condition_met = False
     while time.time() < begin_time + timeout:
         if condition(callable()):
-            condition_met = True
-            break
+            return True
         time.sleep(poll_interval)
 
-    if not xfail and not condition_met:
-        if fatal:
-            pytest.fail(f"Condition was not met within the {timeout} second timeout")
-        else:
-            logging.warning(
-                f"Condition was not met within the {timeout} second timeout"
-            )
-    elif xfail and condition_met:
-        if fatal:
-            pytest.fail(
-                f"Condition was met within the {timeout} second timeout and wasn't expected"
-            )
-        else:
-            logging.warning(
-                f"Condition was met within the {timeout} second timeout and wasn't expected"
-            )
-
-    return condition_met
+    if fatal:
+        pytest.fail(f"Condition was not met within the {timeout} second timeout")
+    else:
+        logging.warning(f"Condition was not met within the {timeout} second timeout")
+        return False
 
 
 def repeat_command_until(command, condition, quiet=True, **repeat_until_kwargs):
@@ -415,9 +388,6 @@ def repeat_command_until(command, condition, quiet=True, **repeat_until_kwargs):
 
     Args:
         quiet (boolean): If True, logging is performed at the TRACE log level.
-
-    Returns:
-        True if the condition is met by the timeout, False otherwise.
 
     Example:
         >>> repeat_command_until("scontrol ping", lambda results: re.search(r'is UP', results['stdout']))
@@ -524,7 +494,7 @@ def start_slurmctld(clean=False, quiet=False):
         if not repeat_command_until(
             "scontrol ping", lambda results: re.search(r"is UP", results["stdout"])
         ):
-            pytest.fail(f"Slurmctld is not running")
+            pytest.fail("Slurmctld is not running")
 
 
 def start_slurm(clean=False, quiet=False):
@@ -576,7 +546,7 @@ def start_slurm(clean=False, quiet=False):
             if not repeat_command_until(
                 "sacctmgr show cluster", lambda results: results["exit_code"] == 0
             ):
-                pytest.fail(f"Slurmdbd is not running")
+                pytest.fail("Slurmdbd is not running")
 
     # Remove unnecessary default node0 from config to avoid being used or reserved
     output = run_command_output(
@@ -958,7 +928,7 @@ def restore_config_file(config="slurm"):
         )
 
 
-def get_config(live=True, source="slurm", quiet=False, delimiter="="):
+def get_config(live=True, source="slurm", quiet=False):
     """Returns the Slurm configuration as a dictionary.
 
     Args:
@@ -972,7 +942,6 @@ def get_config(live=True, source="slurm", quiet=False, delimiter="="):
             If live is False, source should be the name of the config file
             without the .conf prefix (e.g. slurmdbd).
         quiet (boolean): If True, logging is performed at the TRACE log level.
-        delimiter (string): The delimiter between the parameter name and the value.
 
     Returns:
         A dictionary comprised of the parameter names and their values.
@@ -1001,7 +970,7 @@ def get_config(live=True, source="slurm", quiet=False, delimiter="="):
         output = run_command_output(f"{command} show config", fatal=True, quiet=quiet)
 
         for line in output.splitlines():
-            if match := re.search(rf"^\s*(\S+)\s*{re.escape(delimiter)}\s*(.*)$", line):
+            if match := re.search(r"^\s*(\S+)\s*=\s*(.*)$", line):
                 slurm_dict[match.group(1)] = match.group(2).rstrip()
     else:
         config = source
@@ -1013,7 +982,7 @@ def get_config(live=True, source="slurm", quiet=False, delimiter="="):
             f"cat {config_file}", user=properties["slurm-user"], quiet=quiet
         )
         for line in output.splitlines():
-            if match := re.search(rf"^\s*(\S+)\s*{re.escape(delimiter)}\s*(.*)$", line):
+            if match := re.search(r"^\s*(\S+)\s*=\s*(.*)$", line):
                 parameter_name, parameter_value = (
                     match.group(1),
                     match.group(2).rstrip(),
@@ -1030,7 +999,7 @@ def get_config(live=True, source="slurm", quiet=False, delimiter="="):
                     instance_name, subparameters = parameter_value.split(" ", 1)
                     subparameters_dict = {}
                     for subparameter_name, subparameter_value in re.findall(
-                        rf" *([^= ]+) *{re.escape(delimiter)} *([^ ]+)", subparameters
+                        r" *([^= ]+) *= *([^ ]+)", subparameters
                     ):
                         # Reformat the value if necessary
                         if is_integer(subparameter_value):
@@ -1127,11 +1096,7 @@ def config_parameter_includes(name, value, **get_config_kwargs):
 
 
 def set_config_parameter(
-    parameter_name,
-    parameter_value,
-    source="slurm",
-    restart=False,
-    delimiter="=",
+    parameter_name, parameter_value, source="slurm", restart=False
 ):
     """Sets the value of the specified configuration parameter.
 
@@ -1149,7 +1114,6 @@ def set_config_parameter(
         source (string): Name of the config file without the .conf prefix.
         restart (boolean): If True and slurm is running, slurm will be
             restarted rather than reconfigured.
-        delimiter (string): The delimiter between the parameter name and the value.
 
     Note:
         When setting a complex parameter (one which may be repeated and has
@@ -1160,8 +1124,7 @@ def set_config_parameter(
         None
 
     Example:
-        >>> set_config_parameter("ClusterName", "cluster1")
-        >>> set_config_parameter("required", "/tmp/spank_plugin.so", source="plugstack", delimiter=" ")
+        >>> set_config_parameter('ClusterName', 'cluster1')
     """
 
     if not properties["auto-config"]:
@@ -1183,19 +1146,19 @@ def set_config_parameter(
         f"cat {config_file}", user=properties["slurm-user"], quiet=True
     )
     for line in output.splitlines():
-        if not re.search(rf"(?i)^\s*{parameter_name}\s*{re.escape(delimiter)}", line):
-            lines.append(line)
+        if not re.search(rf"(?i)^\s*{parameter_name}\s*=", line):
+            lines.append(f"{line}\n")
     if isinstance(parameter_value, dict):
         for instance_name in parameter_value:
-            line = f"{parameter_name}{delimiter}{instance_name}"
+            line = f"{parameter_name}={instance_name}"
             for subparameter_name, subparameter_value in parameter_value[
                 instance_name
             ].items():
-                line += f" {subparameter_name}{delimiter}{subparameter_value}"
-            lines.append(line)
-    elif parameter_value != None:
-        lines.append(f"{parameter_name}{delimiter}{parameter_value}")
-    input = "\n".join(lines)
+                line += f" {subparameter_name}={subparameter_value}"
+            lines.append(f"{line}\n")
+    elif parameter_value is None:
+        lines.append(f"{parameter_name}={parameter_value}\n")
+    input = "".join(lines)
     run_command(
         f"cat > {config_file}",
         input=input,
@@ -1390,12 +1353,7 @@ def require_whereami():
 
 
 def require_config_parameter(
-    parameter_name,
-    parameter_value,
-    condition=None,
-    source="slurm",
-    skip_message=None,
-    delimiter="=",
+    parameter_name, parameter_value, condition=None, source="slurm", skip_message=None
 ):
     """Ensures that a configuration parameter has the required value.
 
@@ -1410,9 +1368,6 @@ def require_config_parameter(
             value is sufficient. If not, the target parameter_value will be
             used (or the test will be skipped in the case of local-config mode).
         source (string): Name of the config file without the .conf prefix.
-        skip_message (string): Message to be displayed if in local-config mode
-            and parameter not present.
-        delimiter (string): The delimiter between the parameter name and the value.
 
     Note:
         When requiring a complex parameter (one which may be repeated and has
@@ -1446,12 +1401,12 @@ def require_config_parameter(
         parameter_value = parameter_value.casefold()
 
     observed_value = get_config_parameter(
-        parameter_name, live=False, source=source, quiet=True, delimiter=delimiter
+        parameter_name, live=False, source=source, quiet=True
     )
 
     condition_satisfied = False
     if condition is None:
-        condition = lambda observed, desired: observed == desired
+        # condition = lambda observed, desired: observed == desired
         if observed_value == parameter_value:
             condition_satisfied = True
     else:
@@ -1460,9 +1415,7 @@ def require_config_parameter(
 
     if not condition_satisfied:
         if properties["auto-config"]:
-            set_config_parameter(
-                parameter_name, parameter_value, source=source, delimiter=delimiter
-            )
+            set_config_parameter(parameter_name, parameter_value, source=source)
         else:
             if skip_message is None:
                 skip_message = f"This test requires the {parameter_name} parameter to be {parameter_value} (but it is {observed_value})"
@@ -1654,7 +1607,7 @@ def cancel_jobs(
     """Cancels a list of jobs and waits for them to complete.
 
     Args:
-        job_list (list): A list of job ids to cancel. All 0s will be ignored.
+        job_list (list): A list of job ids to cancel.
         timeout (integer): Number of seconds to wait for jobs to be done before
             timing out.
         poll_interval (float): Number of seconds to wait between job state
@@ -1673,8 +1626,6 @@ def cancel_jobs(
         False
     """
 
-    # Filter list to ignore job_ids being 0
-    job_list = [i for i in job_list if i != 0]
     job_list_string = " ".join(str(i) for i in job_list)
 
     if job_list_string == "":
@@ -2475,18 +2426,13 @@ def get_steps(step_id=None, **run_command_kwargs):
     """
 
     steps_dict = {}
-    step_dict = {}
 
     command = "scontrol -d -o show steps"
     if step_id is not None:
         command += f" {step_id}"
-    result = run_command(command, **run_command_kwargs)
+    output = run_command_output(command, fatal=True, **run_command_kwargs)
 
-    if result["exit_code"]:
-        logging.debug(f"scontrol command failed, no steps returned")
-        return step_dict
-
-    output = result["stdout"]
+    step_dict = {}
     for line in output.splitlines():
         if line == "":
             continue
@@ -2500,19 +2446,19 @@ def get_steps(step_id=None, **run_command_kwargs):
             # Reformat the value if necessary
             if is_integer(param_value):
                 param_value = int(param_value)
-            elif is_float(param_value) and param_name != "StepId":
+            elif is_float(param_value):
                 param_value = float(param_value)
             elif param_value == "(null)":
                 param_value = None
 
-            # Add it to the temporary step dictionary
+            # Add it to the temporary job dictionary
             step_dict[param_name] = param_value
 
-        # Add the step dictionary to the steps dictionary
+        # Add the job dictionary to the jobs dictionary
         if step_dict:
             steps_dict[str(step_dict["StepId"])] = step_dict
 
-            # Clear the step dictionary for use by the next step
+            # Clear the job dictionary for use by the next job
             step_dict = {}
 
     return steps_dict
@@ -2574,37 +2520,6 @@ def get_job_parameter(job_id, parameter_name, default=None, quiet=False):
         return default
 
 
-def get_job_id_from_array_task(array_job_id, array_task_id, fatal=False, quiet=True):
-    """Returns the raw job id of a task of a job array.
-
-    Args:
-        array_job_id (integer): The id of the job array.
-        array_task_id (integer): The id of the task of the job array.
-        fatal (boolean): If True, fails if the raw job id is not found in the system.
-        quiet (boolean): If True, logging is performed at the TRACE log level.
-
-    Returns:
-        The raw job id of the given task of a job array, or 0 if not found.
-
-    Example:
-        >>> get_job_id_from_array_task(234, 2)
-        241
-    """
-
-    jobs_dict = get_jobs(quiet=quiet)
-    for job_id, job_values in jobs_dict.items():
-        if (
-            job_values["ArrayJobId"] == array_job_id
-            and job_values["ArrayTaskId"] == array_task_id
-        ):
-            return job_id
-
-    if fatal:
-        pytest.fail(f"{array_job_id}_{array_task_id} was not found in the system")
-
-    return 0
-
-
 def get_step_parameter(step_id, parameter_name, default=None, quiet=False):
     """Returns the value of a specific parameter for a given step.
 
@@ -2625,7 +2540,7 @@ def get_step_parameter(step_id, parameter_name, default=None, quiet=False):
         'primary'
     """
 
-    steps_dict = get_steps(step_id, quiet=quiet)
+    steps_dict = get_steps(quiet=quiet)
 
     if step_id not in steps_dict:
         logging.debug(f"Step ({step_id}) was not found in the step list")
@@ -2636,54 +2551,6 @@ def get_step_parameter(step_id, parameter_name, default=None, quiet=False):
         return step_dict[parameter_name]
     else:
         return default
-
-
-def wait_for_node_state_any(
-    nodename,
-    desired_node_states,
-    timeout=default_polling_timeout,
-    poll_interval=None,
-    fatal=False,
-    reverse=False,
-):
-    """Wait for any of the specified node states to be reached.
-
-    Polls the node state every poll interval seconds, waiting up to the timeout
-    for the specified node state to be reached.
-
-    Args:
-        nodename (string): The name of the node whose state is being monitored.
-        desired_node_states (iterable): The states that the node is expected to reach.
-        timeout (integer): The number of seconds to wait before timing out.
-        poll_interval (float): Number of seconds between node state polls.
-        fatal (boolean): If True, a timeout will cause the test to fail.
-        reverse (boolean): If True, wait for the node to lose the desired state.
-
-    Returns:
-        Boolean value indicating whether the node ever reached the desired state.
-
-    Example:
-        >>> wait_for_node_state_any('node1', ['IDLE', 'ALLOCATED'], timeout=60, poll_interval=5)
-        True
-        >>> wait_for_node_state_any('node2', ['DOWN'], timeout=30, fatal=True)
-        False
-    """
-
-    state_set = frozenset(desired_node_states)
-
-    def any_overlap(state):
-        return bool(state_set & set(state.split("+"))) != reverse
-
-    # Wrapper for the repeat_until command to do all our state checking for us
-    repeat_until(
-        lambda: get_node_parameter(nodename, "State"),
-        any_overlap,
-        timeout=timeout,
-        poll_interval=poll_interval,
-        fatal=fatal,
-    )
-
-    return any_overlap(get_node_parameter(nodename, "State"))
 
 
 def wait_for_node_state(
@@ -2718,15 +2585,16 @@ def wait_for_node_state(
     """
 
     # Figure out if we're waiting for the desired_node_state to be present or to be gone
-    if reverse:
-        condition = lambda state: desired_node_state not in state.split("+")
-    else:
-        condition = lambda state: desired_node_state in state.split("+")
+    def has_state(state):
+        return desired_node_state in state.split("+")
+
+    def not_state(state):
+        return desired_node_state not in state.split("+")
 
     # Wrapper for the repeat_until command to do all our state checking for us
     repeat_until(
         lambda: get_node_parameter(nodename, "State"),
-        condition,
+        not_state if reverse else has_state,
         timeout=timeout,
         poll_interval=poll_interval,
         fatal=fatal,
@@ -2760,7 +2628,7 @@ def wait_for_step(job_id, step_id, **repeat_until_kwargs):
     step_str = f"{job_id}.{step_id}"
     return repeat_until(
         lambda: run_command_output(f"scontrol -o show step {step_str}"),
-        lambda out: re.search(rf"StepId={step_str}", out) is not None,
+        lambda out: re.search(f"StepId={step_str}", out) is not None,
         **repeat_until_kwargs,
     )
 
@@ -2789,7 +2657,7 @@ def wait_for_step_accounted(job_id, step_id, **repeat_until_kwargs):
     step_str = f"{job_id}.{step_id}"
     return repeat_until(
         lambda: run_command_output(f"sacct -j {job_id} -o jobid"),
-        lambda out: re.search(rf"{step_str}", out) is not None,
+        lambda out: re.search(f"{step_str}", out) is not None,
         **repeat_until_kwargs,
     )
 
@@ -2797,12 +2665,10 @@ def wait_for_step_accounted(job_id, step_id, **repeat_until_kwargs):
 def wait_for_job_state(
     job_id,
     desired_job_state,
-    desired_reason=None,
     timeout=default_polling_timeout,
     poll_interval=None,
     fatal=False,
     quiet=False,
-    xfail=False,
 ):
     """Wait for the specified job to reach the desired state.
 
@@ -2819,12 +2685,10 @@ def wait_for_job_state(
     Args:
         job_id (integer): The id of the job.
         desired_job_state (string): The desired state of the job.
-        desired_reason (string): Optional reason to also match.
         timeout (integer): The number of seconds to poll before timing out.
         poll_interval (float): Time (in seconds) between job state polls.
         fatal (boolean): If True, a timeout will cause the test to fail.
         quiet (boolean): If True, logging is performed at the TRACE log level.
-        xfail (boolean): If True, state (or reason) are not expected to be reached.
 
     Returns:
         Boolean value indicating whether the job reached the desired state.
@@ -2851,24 +2715,16 @@ def wait_for_job_state(
 
     # We don't use repeat_until here because we support pseudo-job states and
     # we want to allow early return (e.g. for a DONE state if we want RUNNING)
-
-    xfail_str = ""
-    if xfail:
-        xfail_str = "not "
-    message = (
-        f"Waiting for job ({job_id}) to {xfail_str}reach state {desired_job_state}"
-    )
-    if desired_reason is not None:
-        message += f" and reason {desired_reason}"
-    logging.log(log_level, message)
-
     begin_time = time.time()
+    logging.log(
+        log_level, f"Waiting for job ({job_id}) to reach state {desired_job_state}"
+    )
+
     while time.time() < begin_time + timeout:
         job_state = get_job_parameter(
             job_id, "JobState", default="NOT_FOUND", quiet=True
         )
 
-        message = f"Job ({job_id}) is in state {job_state}, but we are waiting for {desired_job_state}"
         if job_state in [
             "NOT_FOUND",
             "BOOT_FAIL",
@@ -2882,69 +2738,36 @@ def wait_for_job_state(
             "PREEMPTED",
         ]:
             if desired_job_state == "DONE" or job_state == desired_job_state:
-                message = f"Job ({job_id}) is in the {xfail_str}desired state {desired_job_state}"
-                reason = get_job_parameter(
-                    job_id, "Reason", default="NOT_FOUND", quiet=True
+                logging.log(
+                    log_level, f"Job ({job_id}) is in desired state {desired_job_state}"
                 )
-                if desired_reason is None or reason == desired_reason:
-                    if desired_reason is not None:
-                        message += (
-                            f" with the {xfail_str}desired reason {desired_reason}"
-                        )
-                    if not xfail:
-                        logging.log(log_level, message)
-                    else:
-                        logging.warning(message)
-                    return True
-                else:
-                    message += (
-                        f", but with reason {reason} and we waited for {desired_reason}"
-                    )
-
-            if not xfail:
+                return True
+            else:
+                message = f"Job ({job_id}) is in state {job_state}, but we wanted {desired_job_state}"
                 if fatal:
                     pytest.fail(message)
                 else:
                     logging.warning(message)
-            else:
-                logging.log(log_level, message)
-            return False
+                    return False
         elif job_state == desired_job_state:
-            message = (
-                f"Job ({job_id}) is in the {xfail_str}desired state {desired_job_state}"
+            logging.log(
+                log_level, f"Job ({job_id}) is in desired state {desired_job_state}"
             )
-            reason = get_job_parameter(
-                job_id, "Reason", default="NOT_FOUND", quiet=True
+            return True
+        else:
+            logging.log(
+                log_level,
+                f"Job ({job_id}) is in state {job_state}, but we are waiting for {desired_job_state}",
             )
-            if desired_reason is None or reason == desired_reason:
-                if desired_reason is not None:
-                    message += f" with the {xfail_str}desired reason {desired_reason}"
-                if not xfail:
-                    logging.log(log_level, message)
-                else:
-                    logging.warning(message)
-                return True
-            else:
-                message += (
-                    f", but with reason {reason} and we waited for {desired_reason}"
-                )
 
-        logging.log(log_level, message)
         time.sleep(poll_interval)
 
-    message = f"Job ({job_id}) did not reach the {desired_job_state} state"
-    if desired_reason is not None:
-        message += f" or the reason {desired_reason}"
-    message += f" within the {timeout} second(s) timeout"
-    if not xfail:
-        if fatal:
-            pytest.fail(message)
-        else:
-            logging.warning(message)
+    message = f"Job ({job_id}) did not reach the {desired_job_state} state within the {timeout} second timeout"
+    if fatal:
+        pytest.fail(message)
     else:
-        logging.log(log_level, message)
-
-    return False
+        logging.warning(message)
+        return False
 
 
 def check_steps_delayed(job_id, job_output, expected_delayed):
@@ -3143,18 +2966,12 @@ def require_nodes(requested_node_count, requirements_list=[]):
         Cores
         RealMemory
         Gres
-        Features
-
-    Other node requirement types will still be appended to the requirements,
-    but this could stop slurm from starting.
 
     Returns:
         None
 
     Example:
         >>> require_nodes(2, [('CPUs', 4), ('RealMemory', 40)])
-        >>> require_nodes(2, [('CPUs', 2), ('RealMemory', 30), ('Features', 'gpu,mpi')])
-        >>> require_nodes(2, [('CPUs', 4), ('Sockets', 1)])
     """
 
     # If using local-config and slurm is running, use live node information
@@ -3287,26 +3104,8 @@ def require_nodes(requested_node_count, requirements_list=[]):
                         nonqualifying_node_count += 1
                     if nonqualifying_node_count == 1:
                         augmentation_dict[parameter_name] = parameter_value
-            elif parameter_name == "Features":
-                required_features = set(parameter_value.split(","))
-                node_features = set(lower_node_dict.get("features", "").split(","))
-                if not required_features.issubset(node_features):
-                    if node_qualifies:
-                        node_qualifies = False
-                        nonqualifying_node_count += 1
-                    if nonqualifying_node_count == 1:
-                        augmentation_dict[parameter_name] = parameter_value
             else:
-                logging.debug(
-                    f"{parameter_name} is not a supported node requirement type."
-                )
-                logging.debug(
-                    f"{parameter_name}={parameter_value} will be added anyways!"
-                )
-                augmentation_dict[parameter_name] = parameter_value
-                if node_qualifies:
-                    node_qualifies = False
-                    nonqualifying_node_count += 1
+                pytest.fail(f"{parameter_name} is not a supported requirement type")
         if node_qualifies:
             qualifying_node_count += 1
             if first_qualifying_node_name == "":
@@ -3943,7 +3742,7 @@ if not os.path.isfile(testsuite_config_file):
     )
 with open(testsuite_config_file, "r") as f:
     for line in f.readlines():
-        if match := re.search(rf"^\s*(\w+)\s*=\s*(.*)$", line):
+        if match := re.search(r"^\s*(\w+)\s*=\s*(.*)$", line):
             testsuite_config[match.group(1).lower()] = match.group(2)
 if "slurmsourcedir" in testsuite_config:
     properties["slurm-source-dir"] = testsuite_config["slurmsourcedir"]
@@ -3985,7 +3784,7 @@ if not os.path.isfile(slurm_config_file):
 if os.access(slurm_config_file, os.R_OK):
     with open(slurm_config_file, "r") as f:
         for line in f.readlines():
-            if match := re.search(rf"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
+            if match := re.search(r"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
                 properties["slurm-user"] = match.group(1)
 else:
     # slurm.conf is not readable as test-user. We will try reading it as root
@@ -3995,7 +3794,7 @@ else:
     if results["exit_code"] == 0:
         pytest.fail(f"Unable to read {slurm_config_file}")
     for line in results["stdout"].splitlines():
-        if match := re.search(rf"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
+        if match := re.search(r"^\s*(?i:SlurmUser)\s*=\s*(.*)$", line):
             properties["slurm-user"] = match.group(1)
 
 properties["submitted-jobs"] = []

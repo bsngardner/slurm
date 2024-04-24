@@ -1,7 +1,8 @@
 ############################################################################
 # Copyright (C) SchedMD LLC.
 ############################################################################
-import os, re
+import os
+import re
 from time import perf_counter
 
 # SchedMD
@@ -9,17 +10,16 @@ from db.test_db import (
     insert_or_update_many,
 )
 from test_runners.runner_ui import (
-    color_state,
+    # color_state,
     print_status_line,
     print_test_line,
 )
-from utils.log import (
-    log_new_line,
-)
+
+# from utils.log import log_new_line
 from utils.cmds import (
     perform,
     run_cmd,
-    run_cmd_or_exit,
+    # run_cmd_or_exit,
 )
 from utils.fs import (
     write_str_to_new_file,

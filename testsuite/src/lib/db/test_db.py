@@ -1,7 +1,7 @@
 ############################################################################
 # Copyright (C) SchedMD LLC.
 ############################################################################
-import os, sqlite3 as db
+import sqlite3 as db
 
 # SchedMD
 from utils.fs import (

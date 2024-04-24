@@ -1,15 +1,11 @@
 ############################################################################
 # Copyright (C) SchedMD LLC.
 ############################################################################
-import inspect
+import _pytest
 import logging
 import os
-import pathlib
-import pwd
 import pytest
-import _pytest
 import re
-import shutil
 import sys
 
 sys.path.append(sys.path[0] + "/lib")
@@ -179,7 +175,7 @@ def module_teardown():
     failures = []
 
     if atf.properties["auto-config"]:
-        if atf.properties["slurm-started"] == True:
+        if atf.properties["slurm-started"]:
             # Cancel all jobs
             if not atf.cancel_all_jobs(quiet=True):
                 failures.append("Not all jobs were successfully cancelled")

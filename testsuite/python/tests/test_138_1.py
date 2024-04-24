@@ -4,7 +4,6 @@
 import atf
 import os
 import pytest
-import re
 
 iteration_count = 100
 node_count = 4
