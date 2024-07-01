@@ -875,6 +875,13 @@ const static entry_t jsra[] = {
 		.flags = JSR_QOS_ASSOC,
 		.str = "MaxUnknownRunMinsPerUser",
 	},
+	[WAIT_MAX_POWERED_NODES] = {
+		.flags = JSR_MISC,
+		.str = "MaxPoweredUpNodes",
+	},
+	[WAIT_MPI_PORTS_BUSY] = {
+		.str = "MpiPortsBusy",
+	},
 };
 
 extern const char *job_state_reason_string(enum job_state_reason inx)

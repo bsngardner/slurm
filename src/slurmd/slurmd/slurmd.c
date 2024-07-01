@@ -68,7 +68,6 @@
 
 #include "src/common/assoc_mgr.h"
 #include "src/common/bitstring.h"
-#include "src/common/conmgr.h"
 #include "src/common/cpu_frequency.h"
 #include "src/common/daemonize.h"
 #include "src/common/fd.h"
@@ -96,6 +95,8 @@
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
 #include "src/common/xsystemd.h"
+
+#include "src/conmgr/conmgr.h"
 
 #include "src/interfaces/acct_gather_energy.h"
 #include "src/interfaces/auth.h"
@@ -370,8 +371,14 @@ main (int argc, char **argv)
 		fatal("failed to initialize node_features plugin");
 	if (mpi_g_daemon_init() != SLURM_SUCCESS)
 		fatal("Failed to initialize MPI plugins.");
+	if (select_g_init(1) != SLURM_SUCCESS)
+		fatal("Failed to initialize select plugins.");
 	file_bcast_init();
-	run_command_init();
+	if ((run_command_init(argc, argv, conf->binary) != SLURM_SUCCESS) &&
+	    conf->binary[0])
+		fatal("%s: Unable to reliably execute %s",
+		      __func__, conf->binary);
+
 	plugins_registered = true;
 
 	_create_msg_socket();
@@ -601,6 +608,7 @@ _service_connection(void *arg)
 
 	debug3("in the service_connection");
 	slurm_msg_t_init(msg);
+	msg->flags |= SLURM_MSG_KEEP_BUFFER;
 	if ((rc = slurm_receive_msg_and_forward(con->fd, con->cli_addr, msg))
 	   != SLURM_SUCCESS) {
 		error("service_connection: slurm_receive_msg: %m");
@@ -618,6 +626,14 @@ _service_connection(void *arg)
 		goto cleanup;
 	}
 	debug2("Start processing RPC: %s", rpc_num2string(msg->msg_type));
+
+	if (slurm_conf.debug_flags & DEBUG_FLAG_AUDIT_RPCS) {
+		slurm_addr_t cli_addr;
+		(void) slurm_get_peer_addr(con->fd, &cli_addr);
+		log_flag(AUDIT_RPCS, "msg_type=%s uid=%u client=[%pA] protocol=%u",
+			 rpc_num2string(msg->msg_type), msg->auth_uid,
+			 &cli_addr, msg->protocol_version);
+	}
 
 	slurmd_req(msg);
 
@@ -1110,6 +1126,20 @@ _read_config(void)
 	config_overrides = cf->conf_flags & CONF_FLAG_OR;
 	if (conf->dynamic_type == DYN_NODE_FUTURE) {
 		/* Already set to actual config earlier in _dynamic_init() */
+	} else if ((conf->conf_sockets == conf->actual_cpus) &&
+		   (conf->conf_cpus == conf->actual_cpus) &&
+		   (conf->conf_cores == 1) &&
+		   (conf->conf_threads == 1)) {
+		/*
+		 * Only "CPUs=" was configured in the node definition. Lie about
+		 * the actual hardware so that more than one job can run on a
+		 * single core. Keep the current configured values.
+		 */
+		conf->cpus = conf->conf_cpus;
+		conf->boards = conf->conf_boards;
+		conf->sockets = conf->actual_sockets = conf->actual_cpus;
+		conf->cores = conf->actual_cores = 1;
+		conf->threads = conf->actual_threads = 1;
 	} else if (conf->dynamic_type == DYN_NODE_NORM) {
 		conf->cpus = conf->conf_cpus;
 		conf->boards = conf->conf_boards;
@@ -1315,6 +1345,8 @@ static void _try_to_reconfig(void)
 
 	_reconfig = 0;
 	conmgr_quiesce(true);
+
+	save_cred_state();
 
 	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
 		error("getrlimit(RLIMIT_NOFILE): %m");
@@ -1632,6 +1664,10 @@ _process_cmdline(int ac, char **av)
 		{NULL,			0,                 0, 0}
 	};
 
+	if (run_command_is_launcher(ac, av)) {
+		run_command_launcher(ac, av);
+		_exit(127); /* Should not get here */
+	}
 	conf->prog = xbasename(av[0]);
 
 	while ((c = getopt_long(ac, av, opt_string, long_options, NULL)) > 0) {
@@ -1917,10 +1953,11 @@ static int _establish_configuration(void)
 		return SLURM_SUCCESS;
 	}
 
-	if (!(configs = fetch_config(conf->conf_server,
-				     CONFIG_REQUEST_SLURMD))) {
-		error("%s: failed to load configs", __func__);
-		return SLURM_ERROR;
+	while (!(configs = fetch_config(conf->conf_server,
+					CONFIG_REQUEST_SLURMD))) {
+		error("%s: failed to load configs. Retrying in 10 seconds.",
+		      __func__);
+		sleep(10);
 	}
 
 	/*

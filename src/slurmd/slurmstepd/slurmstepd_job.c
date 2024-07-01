@@ -189,6 +189,9 @@ _task_info_destroy(stepd_step_task_info_t *t, uint16_t multi_prog)
 	slurm_mutex_lock(&t->mutex);
 	slurm_mutex_unlock(&t->mutex);
 	slurm_mutex_destroy(&t->mutex);
+	xfree(t->efname);
+	xfree(t->ifname);
+	xfree(t->ofname);
 	if (multi_prog) {
 		xfree(t->argv);
 	} /* otherwise, t->argv is a pointer to step->argv */
@@ -451,7 +454,7 @@ extern stepd_step_rec_t *stepd_step_rec_create(launch_tasks_request_msg_t *msg,
 
 	step->timelimit   = (time_t) -1;
 	step->flags       = msg->flags;
-	step->switch_job  = msg->switch_job;
+	step->switch_step = msg->switch_step;
 	step->open_mode   = msg->open_mode;
 	step->options     = msg->options;
 
@@ -690,6 +693,7 @@ stepd_step_rec_destroy(stepd_step_rec_t *step)
 	xfree(step->task_prolog);
 	xfree(step->task_epilog);
 	xfree(step->job_alloc_cores);
+	xfree(step->node_list);
 	xfree(step->step_alloc_cores);
 	xfree(step->task_cnts);
 	xfree(step->tres_bind);

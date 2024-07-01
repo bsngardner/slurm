@@ -228,12 +228,7 @@ static int _sort_by_avail(void *void1, void *void2)
 	if (sinfo2->part_info)
 		val2 = sinfo2->part_info->state_up;
 
-	if (val1 < val2)
-		diff = -1;
-	else if (val1 > val2)
-		diff = 1;
-	else
-		diff = 0;
+	diff = slurm_sort_int_list_asc(&val1, &val2);
 
 	if (reverse_order && diff)
 		diff = -diff;
@@ -635,12 +630,8 @@ static int _sort_by_partition(void *void1, void *void2)
 	_get_sinfo_from_void(&sinfo1, &sinfo2, void1, void2);
 
 	if (part_order) {
-		if (sinfo1->part_inx < sinfo2->part_inx)
-			diff = -1;
-		else if (sinfo1->part_inx > sinfo2->part_inx)
-			diff = 1;
-		else
-			diff = 0;
+		diff = slurm_sort_uint_list_asc(&sinfo1->part_inx,
+						&sinfo2->part_inx);
 	} else {
 		if (sinfo1->part_info && sinfo1->part_info->name)
 			val1 = sinfo1->part_info->name;
@@ -728,12 +719,7 @@ static int _sort_by_root(void *void1, void *void2)
 	if (sinfo2->part_info)
 		val2 = sinfo2->part_info->flags & PART_FLAG_ROOT_ONLY;
 
-	if (val1 < val2)
-		diff = -1;
-	else if (val1 > val2)
-		diff = 1;
-	else
-		diff = 0;
+	diff = slurm_sort_int_list_asc(&val1, &val2);
 
 	if (reverse_order && diff)
 		diff = -diff;
@@ -754,12 +740,7 @@ static int _sort_by_oversubscribe(void *void1, void *void2)
 	if (sinfo2->part_info)
 		val2 = sinfo2->part_info->max_share;
 
-	if (val1 < val2)
-		diff = -1;
-	else if (val1 > val2)
-		diff = 1;
-	else
-		diff = 0;
+	diff = slurm_sort_int_list_asc(&val1, &val2);
 
 	if (reverse_order && diff)
 		diff = -diff;
@@ -780,12 +761,7 @@ static int _sort_by_preempt_mode(void *void1, void *void2)
 	if (sinfo2->part_info)
 		val2 = sinfo2->part_info->preempt_mode;
 
-	if (val1 < val2)
-		diff = -1;
-	else if (val1 > val2)
-		diff = 1;
-	else
-		diff = 0;
+	diff = slurm_sort_int_list_asc(&val1, &val2);
 
 	if (reverse_order && diff)
 		diff = -diff;

@@ -54,7 +54,6 @@
 
 #include "slurm/slurm.h"
 
-#include "src/common/conmgr.h"
 #include "src/common/daemonize.h"
 #include "src/common/env.h"
 #include "src/common/fd.h"
@@ -70,13 +69,9 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 
-#include "src/scrun/scrun.h"
+#include "src/conmgr/conmgr.h"
 
-/*
- * Special file descriptor for SIGCHILD handler
- * Warning: must not change while SIGCHILD handler is active.
- */
-static int sigchld_fd = -1;
+#include "src/scrun/scrun.h"
 
 static void _open_pty();
 static int _kill_job(conmgr_fd_t *con, int signal);
@@ -228,25 +223,6 @@ static void _daemonize_logs()
 	update_logging();
 }
 
-static void _catch_sigchld(int sig)
-{
-	static const char e = 'C';
-
-	/*
-	 * Can't use normal logging due to possible dead lock:
-	 * skipping: debug("%s: caught SIGCHLD", __func__);
-	 *
-	 * send a single trash byte to trigger callback outside of interrupt
-	 * context.
-	 */
-	safe_write(sigchld_fd, &e, sizeof(e));
-	return;
-
-rwfail:
-	/* would log but it would result in a dead lock here */
-	return;	/* explicit return avoids a compiler error */
-}
-
 static void _tear_down(conmgr_fd_t *con, conmgr_work_type_t type,
 		       conmgr_work_status_t status, const char *tag, void *arg)
 {
@@ -329,7 +305,8 @@ static void _check_if_stopped(conmgr_fd_t *con, conmgr_work_type_t type,
 
 	if (state.status >= CONTAINER_ST_STOPPED) {
 		/* do nothing */
-	} else if (state.job_completed && state.staged_out) {
+	} else if (state.job_completed && state.staged_out &&
+		   (state.status >= CONTAINER_ST_STARTING)) {
 		/* something else may have got past stopped */
 		if (state.status == CONTAINER_ST_STOPPING)
 			stopped = true;
@@ -540,19 +517,18 @@ extern void stop_anchor(int status)
 	debug2("%s: end", __func__);
 }
 
-static int _on_event_data(conmgr_fd_t *con, void *arg)
+static void _catch_sigchld(conmgr_fd_t *con, conmgr_work_type_t type,
+			   conmgr_work_status_t status, const char *tag,
+			   void *arg)
 {
 	pid_t pid;
 	pid_t srun_pid;
 	/* we are acting like this is atomic - it is only for logging */
 	static uint32_t reaped = 0;
-	size_t bytes;
 
 	xassert(arg == &state);
 
-	/* clear out the data */
-	conmgr_fd_get_in_buffer(con, NULL, &bytes);
-	conmgr_fd_mark_consumed_in_buffer(con, bytes);
+	debug("%s: caught SIGCHLD", __func__);
 
 	write_lock_state();
 	srun_pid = state.srun_pid;
@@ -561,7 +537,7 @@ static int _on_event_data(conmgr_fd_t *con, void *arg)
 	if (!srun_pid) {
 		debug("%s: ignoring SIGCHLD before srun started",
 		      __func__);
-		return SLURM_SUCCESS;
+		return;
 	}
 
 	debug("%s: processing SIGCHLD: finding all anchor children (pid=%"PRIu64")",
@@ -612,8 +588,6 @@ static int _on_event_data(conmgr_fd_t *con, void *arg)
 			}
 		}
 	} while (pid > 0);
-
-	return SLURM_SUCCESS;
 }
 
 static void *_on_cs_connection(conmgr_fd_t *con, void *arg)
@@ -693,12 +667,10 @@ static void _queue_send_console_socket(void)
 	fd_set_nonblocking(fd);
 	fd_set_close_on_exec(fd);
 
-	read_lock_state();
 	if (strlcpy(addr.sun_path, state.console_socket,
 		    sizeof(addr.sun_path)) != strlen(state.console_socket))
 		fatal("console socket address too long: %s",
 		      state.console_socket);
-	unlock_state();
 
 	if ((connect(fd, (struct sockaddr *) &addr, sizeof(addr))) < 0)
 		fatal("%s: [%s] Unable to connect() to console socket: %m",
@@ -710,91 +682,8 @@ static void _queue_send_console_socket(void)
 		fatal("%s: [%s] unable to initialize console socket: %s",
 		      __func__, addr.sun_path, slurm_strerror(rc));
 
-	debug("%s: listening for console socket requests at %s",
+	debug("%s: queued up console socket %s to send pty",
 	      __func__, addr.sun_path);
-}
-
-static void *_on_event_connection(conmgr_fd_t *con, void *arg)
-{
-	container_state_msg_status_t status;
-	bool has_console_socket;
-
-	xassert(!arg);
-
-	read_lock_state();
-	has_console_socket = state.console_socket && state.console_socket[0];
-	status = state.status;
-	unlock_state();
-
-	debug3("%s: status=%s", __func__,
-	       slurm_container_status_to_str(status));
-
-	if (status > CONTAINER_ST_CREATING) {
-		/* already failed - skip ahead to the exiting */
-		debug("%s: [%s] starting cleanup with status %s",
-		       __func__, conmgr_fd_get_name(con),
-		       slurm_container_status_to_str(status));
-		stop_anchor(ESLURM_JOB_NOT_PENDING);
-		return NULL;
-	}
-
-	if (has_console_socket)
-		_queue_send_console_socket();
-
-	return &state;
-}
-
-static void _on_event_finish(void *arg)
-{
-#ifndef NDEBUG
-	static const struct sigaction act = {
-		.sa_handler = SIG_DFL,
-		/* avoid SIGCHLD when srun is only stopped */
-		.sa_flags = SA_NOCLDSTOP,
-	};
-
-	debug3("%s", __func__);
-
-	xassert(arg == &state);
-	check_state();
-
-	if (sigaction(SIGCHLD, &act, NULL))
-		fatal("Unable to reset SIGCHLD handler: %m");
-#endif /* !NDEBUG */
-}
-
-static void _create_child_event_socket(void)
-{
-	int event_fd[2];
-	static const struct sigaction act = {
-		.sa_handler = _catch_sigchld,
-		/* avoid SIGCHLD when srun is only stopped */
-		.sa_flags = SA_NOCLDSTOP,
-	};
-	static const conmgr_events_t events = {
-		.on_connection = _on_event_connection,
-		.on_data = _on_event_data,
-		.on_finish = _on_event_finish,
-	};
-
-	check_state();
-
-	if (pipe(event_fd))
-		fatal("%s: unable to open unnamed pipe: %m", __func__);
-	xassert(event_fd[0] > STDERR_FILENO);
-	xassert(event_fd[1] > STDERR_FILENO);
-
-	/* save the file descriptor for the signal handler */
-	sigchld_fd = event_fd[1];
-
-	if (conmgr_process_fd(CON_TYPE_RAW, event_fd[0], event_fd[1], events,
-			      NULL, 0, NULL))
-		fatal("conmgr rejected event pipe");
-
-	if (sigaction(SIGCHLD, &act, NULL))
-		fatal("Unable to catch SIGCHLD: %m");
-
-	/* SIGCHILD handler is live! */
 }
 
 static int _send_start_response(conmgr_fd_t *con, slurm_msg_t *req_msg, int rc)
@@ -1365,7 +1254,7 @@ static int _on_connection_msg(conmgr_fd_t *con, slurm_msg_t *msg, void *arg)
 		break;
 	case REQUEST_CONTAINER_DELETE:
 		rc = _delete(con, msg);
-		slurm_free_msg(msg);
+		/* msg is free'ed later */
 		break;
 	default:
 		rc = SLURM_UNEXPECTED_MSG_ERROR;
@@ -1436,7 +1325,8 @@ static void *_on_startup_con(conmgr_fd_t *con, void *arg)
 
 	xassert(!arg);
 
-	debug4("%s: [%s] new connection", __func__, conmgr_fd_get_name(con));
+	debug4("%s: [%s] new startup connection",
+	       __func__, conmgr_fd_get_name(con));
 
 	write_lock_state();
 	xassert(!state.startup_con);
@@ -1469,6 +1359,8 @@ static void _on_startup_con_fin(void *arg)
 	xassert(state.startup_con);
 	state.startup_con = NULL;
 	unlock_state();
+
+	_try_start();
 }
 
 static int _wait_create_pid(int fd, pid_t child)
@@ -1517,7 +1409,7 @@ check_pid:
 	return rc;
 }
 
-extern int spawn_anchor(void)
+static int _anchor_child(int pipe_fd[2])
 {
 	static const conmgr_events_t conmgr_events = {
 		.on_msg = _on_connection_msg,
@@ -1529,39 +1421,14 @@ extern int spawn_anchor(void)
 		.on_connection = _on_startup_con,
 		.on_finish = _on_startup_con_fin,
 	};
-	int pipe_fd[2] = { -1, -1 };
-	pid_t child;
-	int rc, spank_rc;
 	list_t *socket_listen = list_create(xfree_ptr);
-
-	check_state();
-
-	init_lua();
-
-	if ((rc = spank_init_allocator()))
-		fatal("%s: failed to initialize plugin stack: %s",
-		      __func__, slurm_strerror(rc));
-
-	if (pipe(pipe_fd))
-		fatal("pipe() failed: %m");
-	xassert(pipe_fd[0] > STDERR_FILENO);
-	xassert(pipe_fd[1] > STDERR_FILENO);
-
-	_open_pidfile();
-
-	if ((child = _daemonize(state.requested_terminal))) {
-		if (close(pipe_fd[1]))
-			fatal("%s: close pipe failed: %m", __func__);
-
-		rc = _wait_create_pid(pipe_fd[0], child);
-		goto done;
-	}
+	int rc, spank_rc;
 
 	state.pid = getpid();
 	_populate_pidfile();
 
 	/* must init conmgr after calling fork() in _daemonize() */
-	init_conmgr(0, 0, (conmgr_callbacks_t) { NULL, NULL } );
+	conmgr_init(0, 0, (conmgr_callbacks_t) { NULL, NULL } );
 
 	change_status_force(CONTAINER_ST_CREATING);
 
@@ -1582,6 +1449,9 @@ extern int spawn_anchor(void)
 	else if (state.requested_terminal)
 		_open_pty();
 
+	if (state.console_socket && state.console_socket[0])
+		_queue_send_console_socket();
+
 	/* scrun anchor process */
 
 	/* TODO: only 1 unix socket for now */
@@ -1593,7 +1463,8 @@ extern int spawn_anchor(void)
 		      __func__, slurm_strerror(rc));
 	debug("%s: listening on unix:%s", __func__, state.anchor_socket);
 
-	_create_child_event_socket();
+	conmgr_add_signal_work(SIGCHLD, _catch_sigchld, &state,
+			       "_catch_sigchld");
 
 	if ((rc = conmgr_process_fd(CON_TYPE_RAW, pipe_fd[1], pipe_fd[1],
 				    conmgr_startup_events, NULL, 0, NULL)))
@@ -1628,14 +1499,44 @@ extern int spawn_anchor(void)
 	debug4("%s: END conmgr_run()", __func__);
 	slurm_mutex_unlock(&state.debug_lock);
 #endif
+	FREE_NULL_LIST(socket_listen);
+	conmgr_fini();
 
+	return rc;
+}
+
+extern int spawn_anchor(void)
+{
+	int pipe_fd[2] = { -1, -1 };
+	pid_t child;
+	int rc, spank_rc;
+
+	check_state();
+
+	init_lua();
+
+	if ((rc = spank_init_allocator()))
+		fatal("%s: failed to initialize plugin stack: %s",
+		      __func__, slurm_strerror(rc));
+
+	if (pipe(pipe_fd))
+		fatal("pipe() failed: %m");
+	xassert(pipe_fd[0] > STDERR_FILENO);
+	xassert(pipe_fd[1] > STDERR_FILENO);
+
+	_open_pidfile();
+
+	if ((child = _daemonize(state.requested_terminal))) {
+		if (close(pipe_fd[1]))
+			fatal("%s: close pipe failed: %m", __func__);
+
+		rc = _wait_create_pid(pipe_fd[0], child);
+		goto done;
+	} else
+		rc = _anchor_child(pipe_fd);
 
 done:
 	debug("%s: anchor exiting: %s", __func__, slurm_strerror(rc));
-
-	FREE_NULL_LIST(socket_listen);
-	free_conmgr();
-
 	debug("%s: exit[%d]: %s", __func__, rc, slurm_strerror(rc));
 
 	spank_rc = spank_fini(NULL);

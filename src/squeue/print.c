@@ -57,6 +57,7 @@
 #include "src/common/xstring.h"
 
 #include "src/squeue/print.h"
+#include "src/common/print_fields.h"
 #include "src/squeue/squeue.h"
 
 static void	_combine_pending_array_tasks(List l);
@@ -207,6 +208,28 @@ extern void print_steps_array(job_step_info_t *steps, int size, list_t *format)
 		list_for_each(step_list, _print_step_from_format, format);
 		FREE_NULL_LIST(step_list);
 	}
+}
+
+extern void squeue_filter_jobs_for_json(job_info_msg_t *job_info)
+{
+	int new_array_size = 0;
+	job_info_t *tmp_jobs = xcalloc(job_info->record_count,
+				       sizeof(job_info_t));
+
+	for (int i = 0; i < job_info->record_count; i++) {
+		if (!(_filter_job(&job_info->job_array[i])) &&
+		    !(_filter_job_part(job_info->job_array[i].partition))) {
+			tmp_jobs[new_array_size] = job_info->job_array[i];
+			new_array_size++;
+		} else {
+			slurm_free_job_info_members(&job_info->job_array[i]);
+		}
+	}
+
+	xrecalloc(tmp_jobs, new_array_size, sizeof(job_info_t));
+	xfree(job_info->job_array);
+	job_info->job_array = tmp_jobs;
+	job_info->record_count = new_array_size;
 }
 
 /* Combine a job array's task "reason" into the master job array record
@@ -2134,25 +2157,32 @@ int _print_job_sockets_per_board(job_info_t * job, int width,
 
 }
 
+static char *_expand_std_patterns(char *path, job_info_t *job)
+{
+	job_std_pattern_t job_stp;
+
+	job_stp.array_task_id = job->array_task_id;
+	job_stp.first_step_name = "batch";
+	job_stp.first_step_node = job->batch_host;
+	job_stp.jobid = job->job_id;
+	job_stp.jobname = job->name;
+	job_stp.user = job->user_name;
+	job_stp.work_dir = job->work_dir;
+
+	return expand_stdio_fields(path, &job_stp);
+}
+
 int _print_job_std_err(job_info_t * job, int width,
 		       bool right_justify, char* suffix)
 {
-	char tmp_line[1024];
-
 	if (job == NULL)
 		_print_str("STDERR", width, right_justify, true);
-	else if (!job->batch_flag)
-		_print_str("N/A", width, right_justify, true);
-	else if (job->std_err)
+	else if (params.expand_patterns) {
+		char *tmp_str = _expand_std_patterns(job->std_err, job);
+		_print_str(tmp_str, width, right_justify, true);
+		xfree(tmp_str);
+	} else
 		_print_str(job->std_err, width, right_justify, true);
-	else if (job->std_out)
-		_print_str(job->std_out, width, right_justify, true);
-	else {
-		snprintf(tmp_line,sizeof(tmp_line), "%s/slurm-%u.out",
-			 job->work_dir, job->job_id);
-
-		_print_str(tmp_line, width, right_justify, true);
-	}
 
 	if (suffix)
 		printf("%s", suffix);
@@ -2164,7 +2194,11 @@ int _print_job_std_in(job_info_t * job, int width,
 {
 	if (job == NULL)
 		_print_str("STDIN", width, right_justify, true);
-	else
+	else if (params.expand_patterns) {
+		char *tmp_str = _expand_std_patterns(job->std_in, job);
+		_print_str(tmp_str, width, right_justify, true);
+		xfree(tmp_str);
+	} else
 		_print_str(job->std_in, width, right_justify, true);
 
 	if (suffix)
@@ -2176,18 +2210,26 @@ int _print_job_std_in(job_info_t * job, int width,
 int _print_job_std_out(job_info_t * job, int width,
 		       bool right_justify, char* suffix)
 {
-	char tmp_line[1024];
+	/*
+	 * Populate the default patterns in std_out for batch jobs.
+	 */
+	if (job && !job->std_out && job->batch_flag) {
+		if (job->array_job_id)
+			xstrfmtcat(job->std_out, "%s/slurm-%%A_%%a.out",
+				   job->work_dir);
+                else
+			xstrfmtcat(job->std_out, "%s/slurm-%%j.out",
+				   job->work_dir);
+	}
 
 	if (job == NULL)
 		_print_str("STDOUT", width, right_justify, true);
-	else if (job->std_out)
+	else if (params.expand_patterns) {
+		char *tmp_str = _expand_std_patterns(job->std_out, job);
+		_print_str(tmp_str, width, right_justify, true);
+		xfree(tmp_str);
+	} else
 		_print_str(job->std_out, width, right_justify, true);
-	else {
-		snprintf(tmp_line,sizeof(tmp_line), "%s/slurm-%u.out",
-			 job->work_dir, job->job_id);
-
-		_print_str(tmp_line, width, right_justify, true);
-	}
 
 	if (suffix)
 		printf("%s", suffix);

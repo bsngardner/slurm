@@ -294,7 +294,7 @@ extern int slurm_step_launch(slurm_step_ctx_t *ctx,
 	launch.nnodes		= ctx->step_resp->step_layout->node_cnt;
 	launch.ntasks		= ctx->step_resp->step_layout->task_cnt;
 	launch.slurmd_debug	= params->slurmd_debug;
-	launch.switch_job	= ctx->step_resp->switch_job;
+	launch.switch_step = ctx->step_resp->switch_step;
 	launch.profile		= params->profile;
 	launch.task_prolog	= params->task_prolog;
 	launch.task_epilog	= params->task_epilog;
@@ -316,6 +316,7 @@ extern int slurm_step_launch(slurm_step_ctx_t *ctx,
 	launch.cpt_compact_cnt = params->cpt_compact_cnt;
 	launch.cpt_compact_reps = params->cpt_compact_reps;
 	launch.tres_per_task	= ctx->step_req->tres_per_task;
+	launch.stepmgr = xstrdup(ctx->step_resp->stepmgr);
 
 	launch.threads_per_core	= params->threads_per_core;
 	launch.ntasks_per_board = params->ntasks_per_board;
@@ -391,6 +392,7 @@ extern int slurm_step_launch(slurm_step_ctx_t *ctx,
 	launch.resp_port = xcalloc(launch.num_resp_port, sizeof(uint16_t));
 	memcpy(launch.resp_port, ctx->launch_state->resp_port,
 	       (sizeof(uint16_t) * launch.num_resp_port));
+
 	rc = _launch_tasks(ctx, &launch, params->msg_timeout,
 			   params->tree_width, launch.complete_nodelist);
 
@@ -401,6 +403,7 @@ extern int slurm_step_launch(slurm_step_ctx_t *ctx,
 fail1:
 	xfree(launch.complete_nodelist);
 	xfree(launch.cwd);
+	xfree(launch.stepmgr);
 	env_array_free(env);
 	FREE_NULL_LIST(launch.options);
 	return rc;
@@ -492,7 +495,7 @@ extern int slurm_step_launch_add(slurm_step_ctx_t *ctx,
 	launch.nnodes		= ctx->step_resp->step_layout->node_cnt;
 	launch.ntasks		= ctx->step_resp->step_layout->task_cnt;
 	launch.slurmd_debug	= params->slurmd_debug;
-	launch.switch_job	= ctx->step_resp->switch_job;
+	launch.switch_step = ctx->step_resp->switch_step;
 	launch.profile		= params->profile;
 	launch.task_prolog	= params->task_prolog;
 	launch.task_epilog	= params->task_epilog;

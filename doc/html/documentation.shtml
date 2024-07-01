@@ -23,6 +23,7 @@ may be found in the <a href="https://slurm.schedmd.com/archive/">archive</a>.
 <li><a href="mc_support.html">Support for Multi-core/Multi-threaded Architectures</a></li>
 <li><a href="multi_cluster.html">Multi-Cluster Operation</a></li>
 <li><a href="hdf5_profile_user_guide.html">Profiling Using HDF5 User Guide</a></li>
+<li><a href="job_reason_codes.html">Job Reason Codes</a></li>
 <li><a href="job_exit_code.html">Job Exit Codes</a></li>
 <li><a href="resource_binding.html">Resource Binding</a></li>
 <li>Specific Systems
@@ -35,6 +36,7 @@ may be found in the <a href="https://slurm.schedmd.com/archive/">archive</a>.
 <h2>Slurm Administrators</h2>
 <ul>
 <li><a href="quickstart_admin.html">Quick Start Administrator Guide</a></li>
+<li><a href="upgrades.html">Upgrade Guide</a></li>
 <li><a href="accounting.html">Accounting</a></li>
 <li><a href="reservations.html">Advanced Resource Reservation Guide</a></li>
 <li><a href="authentication.html">Authentication Plugins</a></li>
@@ -131,6 +133,6 @@ may be found in the <a href="https://slurm.schedmd.com/archive/">archive</a>.
 </li>
 </ul>
 
-<p style="text-align:center;">Last modified 13 March 2024</p>
+<p style="text-align:center;">Last modified 04 June 2024</p>
 
 <!--#include virtual="footer.txt"-->

@@ -247,7 +247,7 @@ extern bool gres_select_util_job_mem_set(List job_gres_list,
 		 * is --mem-per-gpu adding another option will require change
 		 * to take MAX of mem_per_gres for all types.
 		 * Similar logic is in _step_alloc() (which is called by
-		 * gres_ctld_step_alloc()), which would also need to be changed
+		 * gres_stepmgr_step_alloc()), which would also need to be changed
 		 * if another mem_per_gres option was added.
 		 */
 		if ((mem_per_gres == 0) || !gres_js->gres_cnt_node_select)
@@ -258,7 +258,7 @@ extern bool gres_select_util_job_mem_set(List job_gres_list,
 		     (node_ptr = next_node_bitmap(job_res->node_bitmap, &i));
 		     i++) {
 			node_off++;
-			if (job_res->whole_node == 1) {
+			if (job_res->whole_node & WHOLE_NODE_REQUIRED) {
 				gres_state_t *gres_state_node;
 				gres_node_state_t *gres_ns;
 

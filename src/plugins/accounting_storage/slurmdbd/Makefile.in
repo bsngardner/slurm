@@ -135,6 +135,7 @@ am__aclocal_m4_deps = $(top_srcdir)/auxdir/ax_check_compile_flag.m4 \
 	$(top_srcdir)/auxdir/x_ac_rdkafka.m4 \
 	$(top_srcdir)/auxdir/x_ac_readline.m4 \
 	$(top_srcdir)/auxdir/x_ac_rsmi.m4 \
+	$(top_srcdir)/auxdir/x_ac_s2n.m4 \
 	$(top_srcdir)/auxdir/x_ac_selinux.m4 \
 	$(top_srcdir)/auxdir/x_ac_setproctitle.m4 \
 	$(top_srcdir)/auxdir/x_ac_sview.m4 \
@@ -180,7 +181,8 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-accounting_storage_slurmdbd_la_LIBADD =
+accounting_storage_slurmdbd_la_DEPENDENCIES =  \
+	../common/libaccounting_storage_common.la
 am_accounting_storage_slurmdbd_la_OBJECTS =  \
 	accounting_storage_slurmdbd.lo as_ext_dbd.lo dbd_conn.lo \
 	slurmdbd_agent.lo
@@ -403,6 +405,10 @@ RDKAFKA_LIBS = @RDKAFKA_LIBS@
 READLINE_LIBS = @READLINE_LIBS@
 RELEASE = @RELEASE@
 RSMI_CPPFLAGS = @RSMI_CPPFLAGS@
+S2N_CPPFLAGS = @S2N_CPPFLAGS@
+S2N_DIR = @S2N_DIR@
+S2N_LDFLAGS = @S2N_LDFLAGS@
+S2N_LIBS = @S2N_LIBS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -516,6 +522,9 @@ accounting_storage_slurmdbd_la_SOURCES = accounting_storage_slurmdbd.c \
 	slurmdbd_agent.c slurmdbd_agent.h
 
 accounting_storage_slurmdbd_la_LDFLAGS = $(PLUGIN_FLAGS)
+accounting_storage_slurmdbd_la_LIBADD = \
+	../common/libaccounting_storage_common.la
+
 all: all-am
 
 .SUFFIXES:
@@ -816,6 +825,10 @@ uninstall-am: uninstall-pkglibLTLIBRARIES
 
 .PRECIOUS: Makefile
 
+
+force:
+$(accounting_storage_slurmdbd_la_LIBADD) : force
+	@cd `dirname $@` && $(MAKE) `basename $@`
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

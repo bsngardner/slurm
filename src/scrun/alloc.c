@@ -37,7 +37,6 @@
 
 #include "slurm/slurm.h"
 
-#include "src/common/conmgr.h"
 #include "src/common/cpu_frequency.h"
 #include "src/common/env.h"
 #include "src/common/net.h"
@@ -49,6 +48,8 @@
 #include "src/common/xassert.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+
+#include "src/conmgr/conmgr.h"
 
 #include "src/scrun/scrun.h"
 
@@ -498,9 +499,10 @@ static void _alloc_job(void)
 		const char *val;
 		const env_vars_t *e = &env_vars[i];
 
-		if ((val = getenv(e->var)))
-			slurm_process_option_or_exit(&opt, e->type, val, true,
-						     false);
+		if ((val = getenv(e->var)) &&
+		    slurm_process_option(&opt, e->type, val, true, false))
+			fatal("%s: Unable to process environment variable %s=%s",
+			      __func__, e->var, val);
 	}
 
 	/* Process spank env options */
@@ -517,6 +519,11 @@ static void _alloc_job(void)
 	read_lock_state();
 	desc->name = xstrdup(state.id);
 	desc->container_id = xstrdup(state.id);
+	if (state.spank_job_env) {
+		desc->spank_job_env =
+			env_array_copy((const char **) state.spank_job_env);
+		desc->spank_job_env_size = envcount(state.spank_job_env);
+	}
 	unlock_state();
 	if (!desc->min_nodes || (desc->min_nodes == NO_VAL))
 		desc->min_nodes = 1;
@@ -604,7 +611,7 @@ extern void get_allocation(conmgr_fd_t *con, conmgr_work_type_t type,
 		extern char **environ;
 		slurm_selected_step_t id = {0};
 
-		if ((rc = unfmt_job_id_string(job_id_str, &id))) {
+		if ((rc = unfmt_job_id_string(job_id_str, &id, NO_VAL))) {
 			fatal("%s: invalid SLURM_JOB_ID=%s: %s",
 			      __func__, job_id_str, slurm_strerror(rc));
 			return;

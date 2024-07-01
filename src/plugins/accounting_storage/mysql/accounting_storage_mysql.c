@@ -569,6 +569,7 @@ static int _as_mysql_acct_check_tables(mysql_conn_t *mysql_conn)
 		{ "creation_time", "bigint unsigned not null" },
 		{ "mod_time", "bigint unsigned default 0 not null" },
 		{ "deleted", "tinyint default 0" },
+		{ "flags", "int unsigned default 0" },
 		{ "name", "tinytext not null" },
 		{ "description", "text not null" },
 		{ "organization", "text not null" },
@@ -793,38 +794,6 @@ static int _as_mysql_acct_check_tables(mysql_conn_t *mysql_conn)
 		"select @mj, @mja, @mpt, @msj, "
 		"@mwpj, @mtpj, @mtpn, @mtmpj, @mtrm, "
 		"@def_qos_id, @qos, @delta_qos, @prio;"
-		"END;";
-	char *get_coord_qos =
-		"drop procedure if exists get_coord_qos; "
-		"create procedure get_coord_qos(my_table text, acct text, "
-		"cluster text, coord text) "
-		"begin "
-		"set @qos = ''; "
-		"set @delta_qos = ''; "
-		"set @found_coord = NULL; "
-		"set @my_acct = acct; "
-		"REPEAT "
-		"set @s = 'select @qos := t1.qos, "
-		"@delta_qos := REPLACE(CONCAT(t1.delta_qos, @delta_qos), "
-		"\\\',,\\\', \\\',\\\'), @my_acct_new := parent_acct, "
-		"@found_coord_curr := t2.user '; "
-		"set @s = concat(@s, 'from \"', cluster, '_', my_table, '\" "
-		"as t1 left outer join acct_coord_table as t2 on "
-		"t1.acct=t2.acct where t1.acct = @my_acct && t1.user=\\\'\\\' "
-		"&& (t2.user=\\\'', coord, '\\\' || t2.user is null)'); "
-		"prepare query from @s; "
-		"execute query; "
-		"deallocate prepare query; "
-		"if @found_coord_curr is not NULL then "
-		"set @found_coord = @found_coord_curr; "
-		"end if; "
-		"if @found_coord is NULL then "
-		"set @qos = ''; "
-		"set @delta_qos = ''; "
-		"end if; "
-		"set @my_acct = @my_acct_new; "
-		"UNTIL @qos != '' || @my_acct = '' END REPEAT; "
-		"select REPLACE(CONCAT(@qos, @delta_qos), ',,', ','); "
 		"END;";
 	/*
 	 * 2 versions after 23.11 we can remove [get|set]_lineage, it is only
@@ -1143,12 +1112,6 @@ static int _as_mysql_acct_check_tables(mysql_conn_t *mysql_conn)
 		return rc;
 	}
 
-	rc = mysql_db_query(mysql_conn, get_coord_qos);
-	if (rc != SLURM_SUCCESS) {
-		error("issue making get_coord_qos procedure");
-		return rc;
-	}
-
 	/* Add user root to be a user by default and have this default
 	 * account be root.  If already there just update
 	 * name='root'.  That way if the admins delete it it will
@@ -1247,6 +1210,7 @@ extern int create_cluster_assoc_table(
 		{ "mod_time", "bigint unsigned default 0 not null" },
 		{ "deleted", "tinyint default 0 not null" },
 		{ "comment", "text" },
+		{ "flags", "int unsigned default 0 not null" },
 		{ "is_def", "tinyint default 0 not null" },
 		{ "id_assoc", "int unsigned not null auto_increment" },
 		{ "user", "tinytext not null default ''" },
@@ -1394,6 +1358,9 @@ extern int create_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		{ "gres_used", "text not null default ''" },
 		{ "wckey", "tinytext not null default ''" },
 		{ "work_dir", "text not null default ''" },
+		{ "std_err", "text not null default ''" },
+		{ "std_in", "text not null default ''" },
+		{ "std_out", "text not null default ''" },
 		{ "submit_line", "longtext" },
 		{ "system_comment", "text" },
 		{ "tres_alloc", "text not null default ''" },
@@ -2009,6 +1976,34 @@ static int _setup_assoc_limits(slurmdb_assoc_rec_t *assoc,
 		xstrcat(*cols, ", comment");
 		xstrfmtcat(*vals, ", '%s'", assoc->comment);
 		xstrfmtcat(*extra, ", comment='%s'", assoc->comment);
+	}
+
+	if (assoc->flags) {
+		xstrcat(*cols, ", flags");
+
+		if (for_add) {
+			slurmdb_assoc_flags_t base_flags =
+				assoc->flags & ~ASSOC_FLAG_BASE;
+			xstrfmtcat(*vals, ", %u", base_flags);
+			xstrfmtcat(*extra, ", flags=%u", base_flags);
+		} else {
+			/*
+			 * At the moment this only works well with this one flag
+			 * future versions of this code will probably need to
+			 * handle multiple.
+			 */
+			if (assoc->flags & ASSOC_FLAG_USER_COORD_NO) {
+				xstrfmtcat(*vals, ", flags&~%u",
+					   ASSOC_FLAG_USER_COORD);
+				xstrfmtcat(*extra, ", flags=flags&~%u",
+					   ASSOC_FLAG_USER_COORD);
+			} else if (assoc->flags & ASSOC_FLAG_USER_COORD) {
+				xstrfmtcat(*vals, ", flags|%u",
+					   ASSOC_FLAG_USER_COORD);
+				xstrfmtcat(*extra, ", flags=flags|%u",
+					   ASSOC_FLAG_USER_COORD);
+			}
+		}
 	}
 
 	/* When modifying anything below this comment it happens in
@@ -2635,7 +2630,7 @@ just_update:
 			       "grp_tres_run_mins=DEFAULT, "
 			       "qos=DEFAULT, delta_qos=DEFAULT, "
 			       "priority=DEFAULT, is_def=DEFAULT, "
-			       "comment=DEFAULT "
+			       "comment=DEFAULT, flags=DEFAULT "
 			       "where (%s);",
 			       cluster_name, assoc_table, now,
 			       loc_assoc_char);
@@ -3790,6 +3785,11 @@ extern void acct_storage_p_send_all(void *db_conn, time_t event_time,
 }
 
 extern int acct_storage_p_shutdown(void *db_conn, bool dbd)
+{
+	return SLURM_SUCCESS;
+}
+
+extern int acct_storage_p_relay_msg(void *db_conn, persist_msg_t *msg)
 {
 	return SLURM_SUCCESS;
 }

@@ -263,7 +263,7 @@ static bool _nvml_get_mem_freqs(nvmlDevice_t *device,
 	}
 
 	qsort(mem_freqs, *mem_freqs_size, sizeof(unsigned int),
-	      gpu_common_sort_freq_descending);
+	      slurm_sort_uint_list_desc);
 
 	if ((*mem_freqs_size > 1) &&
 	    (mem_freqs[0] <= mem_freqs[(*mem_freqs_size)-1])) {
@@ -308,7 +308,7 @@ static bool _nvml_get_gfx_freqs(nvmlDevice_t *device,
 	}
 
 	qsort(gfx_freqs, *gfx_freqs_size, sizeof(unsigned int),
-	      gpu_common_sort_freq_descending);
+	      slurm_sort_uint_list_desc);
 
 	if ((*gfx_freqs_size > 1) &&
 	    (gfx_freqs[0] <= gfx_freqs[(*gfx_freqs_size)-1])) {
@@ -1609,8 +1609,6 @@ static int _get_nvml_process_info(nvmlReturn_t (*get_proc)(nvmlDevice_t,
 
 static int _get_gpumem(nvmlDevice_t device, pid_t pid, acct_gather_data_t *data)
 {
-	data[gpumem_pos].size_read = 0;
-
 	if (_get_nvml_process_info(nvmlDeviceGetComputeRunningProcesses, device,
 				   pid, data) != SLURM_SUCCESS)
 		return SLURM_ERROR;
@@ -1628,8 +1626,6 @@ static int _get_gpuutil(nvmlDevice_t device, pid_t pid,
 	nvmlReturn_t rc;
 	nvmlProcessUtilizationSample_t *proc_util;
 	unsigned int cnt = 0;
-
-	data[gpuutil_pos].size_read = 0;
 
 	/*
 	 * Sending NULL will fill in cnt with the number of processes so we can
@@ -1852,6 +1848,9 @@ extern int gpu_p_usage_read(pid_t pid, acct_gather_data_t *data)
 
 	_nvml_init();
 	gpu_p_get_device_count(&device_count);
+
+	data[gpumem_pos].size_read = 0;
+	data[gpuutil_pos].size_read = 0;
 
 	for (int i = 0; i < device_count; i++) {
 		nvmlDevice_t device;

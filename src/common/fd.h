@@ -187,4 +187,23 @@ extern int mkdirpath(const char *pathname, mode_t mode, bool is_dir);
  */
 extern int rmdir_recursive(const char *path, bool remove_top);
 
+/*
+ * Use ioctl(FIONREAD) to get number of bytes in buffer waiting for read().
+ * IN fd - file descriptor to query
+ * IN/OUT readable_ptr - Pointer to populate if ioctl() is able to query
+ *	successfully. Only changed if RET=SLURM_SUCCESS.
+ * IN con_name - descriptive name for fd connection (for logging)
+ * RET SLURM_SUCCESS or error
+ */
+extern int fd_get_readable_bytes(int fd, int *readable_ptr,
+				 const char *con_name);
+
+/*
+ * Get TCP MSS (Max Segment Size) of a given socket
+ * IN fd - file descriptor for socket
+ * IN con_name - Connection name (for logging) or NULL
+ * RET NO_VAL on failure or >0 for MSS of socket
+ */
+extern int fd_get_maxmss(int fd, const char *con_name);
+
 #endif /* !_FD_H */

@@ -1601,6 +1601,7 @@ function __slurm_comp_common_flags() {
 	-x | --exclude) __slurm_compreply_list "$(__slurm_nodes)" "ALL" "true" ;;
 	--exclusive) __slurm_compreply "${exclusive_types[*]}" ;;
 	--export) __slurm_compreply "${export_types[*]}" ;;
+	--export-file) _filedir ;;
 	--get-user-env) __slurm_compreply "${env_modes[*]}" ;;
 	--gid) __slurm_compreply "$(__slurm_linux_groups) $(__slurm_linux_gids)" ;;
 	--gpu-bind) __slurm_compreply "${gpubind_types[*]}" ;;
@@ -2323,8 +2324,8 @@ function __slurm_comp_sacctmgr_spec_qos() {
 		"maxtresperaccount="
 		"maxtrespernode="
 		"maxtresperuser="
-		"maxtresrunminspa="
-		"maxtresrunminspu="
+		"maxtresrunminsperaccount="
+		"maxtresrunminsperuser="
 		"maxwalldurationperjob="
 		"minpriothreshold="
 		"mintresperjob="
@@ -3254,6 +3255,9 @@ function __slurm_comp_sbcast_flags() {
 	--exclude?(s)) _filedir -d ;;
 	-j | --jobid?(s)) __slurm_compreply "$(__slurm_jobs) $(__slurm_jobsteps)" ;;
 	--send-lib?(s)) __slurm_compreply "$(__slurm_boolean)" ;;
+	-s | --size) ;;
+	-t | --timeout) ;;
+	-F | --treewidth) ;;
 	*) return 1 ;;
 	esac
 
@@ -3739,7 +3743,7 @@ function __scontrol_setdebugflags() {
 		"switch"
 		"tracejobs"
 		"triggers"
-		"workqueue"
+		"conmgr"
 	)
 	local _debug_flags=()
 	local parameters=(

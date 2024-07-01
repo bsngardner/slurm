@@ -1,4 +1,4 @@
-<h2>Slurm 24.05.0</h2>
+<h2 id="24050">Slurm 24.05.0<a class="slurm_link" href="#24050"></a></h2>
 
 <h3>openapi/slurmctld</h3>
 
@@ -564,6 +564,18 @@ unchanged.
 <tr class="trchange"><td class="tdfield">remove</td><td class="tdfield">/components/schemas/v0.0.41_rollup_stats/description</td></tr>
 <tr class="trchange"><td class="tdfield">remove</td><td class="tdfield">/paths/"/slurmdb/v0.0.41"/jobs/get/parameters[4]/description</td></tr>
 <tr class="trchange"><td class="tdfield">remove</td><td class="tdfield">/paths/"/slurmdb/v0.0.41"/jobs/get/parameters[5]/description</td></tr>
+
+<h4>Add node fields</h4>
+<table class="tchange">
+<tr class="trchange">
+	<td class="tdfield">new fields</td>
+	<td class="tdchange" colspan=2>
+		<ul>
+			<li>.components.schemas."v0.0.41_node".properties.res_cores_per_gpu</li>
+			<li>.components.schemas."v0.0.41_node".properties.gpu_spec</li>
+		</ul>
+	</td>
+</tr>
 </table>
 
 <h4>Switch integer to have NO_VAL tagging to allow for complex values.</h4>
@@ -591,6 +603,58 @@ unchanged.
 <tr class="trchange">
 	<td class="tdfield">Modified field</td>
 	<td class="tdchange">.components.schemas."v0.0.41_kill_jobs_msg".properties.flags.items.enum</td>
+</tr>
+<tr class="trchange">
+       <td class="tdfield">Added STEPMGR_ENABLED flag</td>
+       <td class="tdchange">.components.schemas."v0.0.41_openapi_job_info_resp".properties.jobs.items.properties.flags</td>
+</tr>
+</table>
+
+<h4>New enum values</h4>
+<table class="tchange">
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_openapi_slurmdbd_config_resp".properties.accounts.items.properties.flags.items.enum</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_openapi_accounts_resp".properties.accounts.items.properties.flags.items.enum</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_openapi_assocs_resp".properties.associations.items.properties.flags.items.enum</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_job_desc_msg".properties.shared.items.enum.topo</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_openapi_job_info_resp".properties.shared.items.enum.topo</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_job_desc_msg".properties.exclusive.items.enum.topo</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">New values</td>
+	<td class="tdchange">.components.schemas."v0.0.41_openapi_job_info_resp".properties.exclusive.items.enum.topo</td>
+</tr>
+</table>
+
+<h4>Add fields to job description</h4>
+<table class="tchange">
+<tr class="trchange">
+	<td class="tdfield">new field</td>
+	<td class="tdchange" colspan=2>
+		.components.schemas."v0.0.41_job_desc_msg".properties.segment_size
+	</td>
+</tr>
+<tr class="trchange">
+	<td class="tdfield">new field</td>
+	<td class="tdchange" colspan=2>
+		.components.schemas."v0.0.41_job_desc_msg".properties.resv_mpi_ports
+	</td>
 </tr>
 </table>
 

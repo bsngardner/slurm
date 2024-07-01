@@ -935,6 +935,9 @@ extern void slurmdb_destroy_job_rec(void *object)
 		xfree(job->resv_name);
 		xfree(job->script);
 		FREE_NULL_LIST(job->steps);
+		xfree(job->std_err);
+		xfree(job->std_in);
+		xfree(job->std_out);
 		xfree(job->submit_line);
 		xfree(job->system_comment);
 		xfree(job->tres_alloc_str);
@@ -1821,6 +1824,147 @@ extern char *slurmdb_federation_flags_str(uint32_t flags)
 	return federation_flags;
 }
 
+#define T(flag, str) { flag, XSTRINGIFY(flag), str }
+static const struct {
+	slurmdb_acct_flags_t flag;
+	char *flag_str;
+	char *str;
+} slurmdb_acct_flags_map[] = {
+	T(SLURMDB_ACCT_FLAG_DELETED, "Deleted"),
+	T(SLURMDB_ACCT_FLAG_WASSOC, "WithAssociations"),
+	T(SLURMDB_ACCT_FLAG_WCOORD, "WithCoordinators"),
+	T(SLURMDB_ACCT_FLAG_USER_COORD_NO, "NoUsersAreCoords"),
+	T(SLURMDB_ACCT_FLAG_USER_COORD, "UsersAreCoords"),
+	T(SLURMDB_ACCT_FLAG_INVALID, "INVALID"),
+};
+#undef T
+
+static slurmdb_acct_flags_t _str_2_acct_flag(char *flag_in)
+{
+	if (!flag_in || !flag_in[0])
+		return SLURMDB_ACCT_FLAG_NONE;
+
+	for (int i = 0; i < ARRAY_SIZE(slurmdb_acct_flags_map); i++)
+		if (!xstrncasecmp(flag_in, slurmdb_acct_flags_map[i].str,
+				  strlen(flag_in)))
+			return slurmdb_acct_flags_map[i].flag;
+
+	debug("%s: Unable to match %s to a slurmdbd_acct_flags_t flag",
+	      __func__, flag_in);
+	return SLURMDB_ACCT_FLAG_INVALID;
+}
+
+extern slurmdb_acct_flags_t str_2_slurmdb_acct_flags(char *flags_in)
+{
+	slurmdb_acct_flags_t acct_flags = 0;
+	char *token, *my_flags, *last = NULL;
+
+	my_flags = xstrdup(flags_in);
+	token = strtok_r(my_flags, ",", &last);
+	while (token) {
+		slurmdb_acct_flags_t f = _str_2_acct_flag(token);
+
+		if (f == SLURMDB_ACCT_FLAG_INVALID) {
+			acct_flags = SLURMDB_ACCT_FLAG_INVALID;
+			break;
+		}
+
+		acct_flags |= f;
+		token = strtok_r(NULL, ",", &last);
+	}
+	xfree(my_flags);
+
+	return acct_flags;
+}
+
+extern char *slurmdb_acct_flags_2_str(slurmdb_acct_flags_t flags)
+{
+	char *acct_flags = NULL, *at = NULL;
+
+	if (flags == SLURMDB_ACCT_FLAG_NONE)
+		return xstrdup("None");
+
+	for (int i = 0; i < ARRAY_SIZE(slurmdb_acct_flags_map); i++) {
+		if ((slurmdb_acct_flags_map[i].flag & flags) ==
+		    slurmdb_acct_flags_map[i].flag)
+			xstrfmtcatat(acct_flags, &at, "%s%s",
+				     (acct_flags ? "," : ""),
+				     slurmdb_acct_flags_map[i].str);
+	}
+
+	return acct_flags;
+}
+
+#define T(flag, str) { flag, XSTRINGIFY(flag), str }
+static const struct {
+	slurmdb_assoc_flags_t flag;
+	char *flag_str;
+	char *str;
+} slurmdb_assoc_flags_map[] = {
+	T(ASSOC_FLAG_DELETED, "Deleted"),
+	T(ASSOC_FLAG_NO_UPDATE, "NoUpdate"),
+	T(ASSOC_FLAG_EXACT, "Exact"),
+	T(ASSOC_FLAG_USER_COORD_NO, "NoUsersAreCoords"),
+	T(ASSOC_FLAG_USER_COORD, "UsersAreCoords"),
+	T(ASSOC_FLAG_INVALID, "INVALID"),
+};
+#undef T
+
+static slurmdb_assoc_flags_t _str_2_assoc_flag(char *flag_in)
+{
+	if (!flag_in || !flag_in[0])
+		return ASSOC_FLAG_NONE;
+
+	for (int i = 0; i < ARRAY_SIZE(slurmdb_assoc_flags_map); i++)
+		if (!xstrncasecmp(flag_in, slurmdb_assoc_flags_map[i].str,
+				  strlen(flag_in)))
+			return slurmdb_assoc_flags_map[i].flag;
+
+	debug("%s: Unable to match %s to a slurmdbd_assoc_flags_t flag",
+	      __func__, flag_in);
+	return ASSOC_FLAG_INVALID;
+}
+
+extern slurmdb_assoc_flags_t str_2_slurmdb_assoc_flags(char *flags_in)
+{
+	slurmdb_assoc_flags_t assoc_flags = 0;
+	char *token, *my_flags, *last = NULL;
+
+	my_flags = xstrdup(flags_in);
+	token = strtok_r(my_flags, ",", &last);
+	while (token) {
+		slurmdb_assoc_flags_t f = _str_2_assoc_flag(token);
+
+		if (f == ASSOC_FLAG_INVALID) {
+			assoc_flags = ASSOC_FLAG_INVALID;
+			break;
+		}
+		assoc_flags |= f;
+		token = strtok_r(NULL, ",", &last);
+	}
+	xfree(my_flags);
+
+	return assoc_flags;
+}
+
+extern char *slurmdb_assoc_flags_2_str(slurmdb_assoc_flags_t flags)
+{
+	char *assoc_flags = NULL, *at = NULL;
+
+	if (flags == ASSOC_FLAG_NONE)
+		return xstrdup("None");
+
+	for (int i = 0; i < ARRAY_SIZE(slurmdb_assoc_flags_map); i++) {
+		if ((slurmdb_assoc_flags_map[i].flag & flags) ==
+		    slurmdb_assoc_flags_map[i].flag)
+			xstrfmtcatat(assoc_flags, &at, "%s%s",
+				     (assoc_flags ? "," : ""),
+				     slurmdb_assoc_flags_map[i].str);
+	}
+
+	return assoc_flags;
+}
+
 static uint32_t _str_2_federation_flags(char *flags)
 {
 	return 0;
@@ -2557,6 +2701,8 @@ extern uint16_t str_2_slurmdb_problem(char *problem)
 extern void log_assoc_rec(slurmdb_assoc_rec_t *assoc_ptr,
 			  List qos_list)
 {
+	char *tmp_char = NULL;
+
 	xassert(assoc_ptr);
 
 	if (get_log_level() < LOG_LEVEL_DEBUG2)
@@ -2611,6 +2757,10 @@ extern void log_assoc_rec(slurmdb_assoc_rec_t *assoc_ptr,
 			      time_buf, sizeof(time_buf));
 		debug2("  GrpWall          : %s", time_buf);
 	}
+
+	tmp_char = slurmdb_assoc_flags_2_str(assoc_ptr->flags);
+	debug2("  Flags            : %s", tmp_char);
+	xfree(tmp_char);
 
 	debug2("  Lineage          : %s", assoc_ptr->lineage);
 
@@ -2936,8 +3086,8 @@ extern int slurmdb_addto_qos_char_list(List char_list, List qos_list,
 	return count;
 }
 
-extern int slurmdb_send_accounting_update_persist(
-	List update_list, slurm_persist_conn_t *persist_conn)
+extern int slurmdb_send_accounting_update_persist(list_t *update_list,
+						  persist_conn_t *persist_conn)
 {
 	slurm_msg_t req;
 	slurm_msg_t resp;
@@ -3697,6 +3847,10 @@ extern char *slurmdb_make_tres_string_from_simple(
 					count /= CPU_TIME_ADJ;
 					secs2time_str((time_t)count, outbuf,
 						      FORMAT_STRING_SIZE);
+				} else if (!xstrcasecmp(tres_rec->name,
+							"gpuutil")) {
+					snprintf(outbuf, sizeof(outbuf),
+						 "%"PRIu64, count);
 				} else
 					convert_num_unit((double)count, outbuf,
 							 sizeof(outbuf),

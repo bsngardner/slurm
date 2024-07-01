@@ -63,6 +63,7 @@
 #include "src/interfaces/select.h"
 #include "src/interfaces/switch.h"
 
+#include "src/slurmctld/agent.h"
 #include "src/slurmctld/heartbeat.h"
 #include "src/slurmctld/locks.h"
 #include "src/slurmctld/proc_req.h"
@@ -284,13 +285,33 @@ void run_backup(void)
 	slurm_thread_join(slurmctld_config.thread_id_rpc);
 
 	/*
+	 * Expressly shutdown the agent. The agent can in whole or in part
+	 * shutdown once slutmctld_config.shutdown_time is set. Remove any
+	 * doubt about its state here.
+	 */
+	agent_fini();
+
+	/*
 	 * The job list needs to be freed before we run
 	 * ctld_assoc_mgr_init, it should be empty here in the first place.
 	 */
 	lock_slurmctld(config_write_lock);
 	job_fini();
+
+	/*
+	 * The backup is now done shutting down, reset shutdown_time before
+	 * re-initializing.
+	 */
+	slurmctld_config.shutdown_time = (time_t) 0;
+
 	init_job_conf();
 	unlock_slurmctld(config_write_lock);
+
+	/*
+	 * Init the agent here so it comes up at roughly the same place as a
+	 * normal startup.
+	 */
+	agent_init();
 
 	/* Calls assoc_mgr_init() */
 	ctld_assoc_mgr_init();
@@ -305,11 +326,10 @@ void run_backup(void)
 
 	/* clear old state and read new state */
 	lock_slurmctld(config_write_lock);
-	if (switch_g_restore(slurm_conf.state_save_location, true)) {
+	if (switch_g_restore(true)) {
 		error("failed to restore switch state");
 		abort();
 	}
-	slurmctld_config.shutdown_time = (time_t) 0;
 	if (read_slurm_conf(2)) {	/* Recover all state */
 		error("Unable to recover slurm state");
 		abort();
@@ -322,8 +342,8 @@ void run_backup(void)
 		 */
 		list_flush(conf_includes_list);
 	}
-	unlock_slurmctld(config_write_lock);
 	select_g_select_nodeinfo_set_all();
+	unlock_slurmctld(config_write_lock);
 }
 
 /*
@@ -371,7 +391,9 @@ static void *_background_signal_hand(void *no_data)
 			break;
 		case SIGUSR2:
 			info("Logrotate signal (SIGUSR2) received");
+			lock_slurmctld(config_write_lock);
 			update_logging();
+			unlock_slurmctld(config_write_lock);
 			break;
 		default:
 			error("Invalid signal (%d) received", sig);
@@ -441,8 +463,18 @@ static void *_background_rpc_mgr(void *no_data)
 		slurm_msg_t_init(&msg);
 		if (slurm_receive_msg(newsockfd, &msg, 0) != 0)
 			error("slurm_receive_msg: %m");
-		else
+		else {
+			if (slurm_conf.debug_flags & DEBUG_FLAG_AUDIT_RPCS) {
+				slurm_addr_t cli_addr;
+				(void) slurm_get_peer_addr(newsockfd, &cli_addr);
+				log_flag(AUDIT_RPCS, "msg_type=%s uid=%u client=[%pA] protocol=%u",
+					 rpc_num2string(msg.msg_type),
+					 msg.auth_uid, &cli_addr,
+					 msg.protocol_version);
+			}
+
 			_background_process_msg(&msg);
+		}
 
 		slurm_free_msg_members(&msg);
 

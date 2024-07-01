@@ -50,6 +50,8 @@
 #define TYPE_PREFIX "DATA_PARSER_"
 #define KEY_PREFIX XSTRINGIFY(DATA_VERSION) "_"
 #define OPENAPI_REF_PLACEHOLDER ((void *) 0xfa0b901301120040)
+#define IS_FLAG_BIT_DEPRECATED(bit) (bit->deprecated)
+#define IS_PARSER_DEPRECATED(parser) (parser->deprecated)
 
 typedef struct {
 	int magic; /* MAGIC_SPEC_ARGS */
@@ -545,8 +547,8 @@ static void _add_param_eflags(data_t *params, const parser_t *parser,
 		if (!bit->hidden)
 			_add_param(data_set_dict(data_list_append(params)),
 				   bit->name, OPENAPI_FORMAT_BOOL, true,
-				   bit->description, bit->deprecated, false,
-				   args);
+				   bit->description,
+				   IS_FLAG_BIT_DEPRECATED(bit), false, args);
 	}
 }
 
@@ -580,7 +582,8 @@ static void _add_param_linked(data_t *params, const parser_t *fp,
 	schema = _add_param(data_set_dict(data_list_append(params)), fp->key,
 			    OPENAPI_FORMAT_STRING,
 			    (p->obj_openapi == OPENAPI_FORMAT_BOOL),
-			    fp->obj_desc, fp->required, fp->deprecated, args);
+			    fp->obj_desc, IS_PARSER_DEPRECATED(fp),
+			    fp->required, args);
 
 	if (fp->model == PARSER_MODEL_ARRAY_LINKED_FIELD)
 		fp = find_parser_by_type(fp->type);

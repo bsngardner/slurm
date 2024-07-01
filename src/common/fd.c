@@ -40,7 +40,10 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <netinet/tcp.h>
 #include <poll.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -58,6 +61,28 @@
 #include "src/common/xassert.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+
+/* Set minimum MSS matching TCP MSDS from RFC#879 */
+#define MSS_MIN_BYTES 556
+
+/*
+ * Helper macro to log_flag(NET, ...) against a given connection
+ * IN fd - file descriptor relavent for logging
+ * IN con_name - human friendly name for fd or NULL (to auto resolve)
+ * IN fmt - log message format
+ */
+#define log_net(fd, con_name, fmt, ...) \
+do { \
+	if (slurm_conf.debug_flags & DEBUG_FLAG_NET) { \
+		char *log_name = NULL; \
+		if (!con_name) \
+			log_name = fd_resolve_path(fd); \
+		log_flag(NET, "%s: [%s] " fmt, \
+			 __func__, con_name ? con_name : log_name, \
+			 ##__VA_ARGS__); \
+		xfree(log_name); \
+	} \
+} while (false)
 
 /*
  * Define slurm-specific aliases for use by plugins, see slurm_xlator.h
@@ -375,12 +400,17 @@ extern char *fd_resolve_path(int fd)
 
 #if defined(__linux__)
 	char ret[PATH_MAX + 1];
+	ssize_t bytes;
 
 	path = xstrdup_printf("/proc/self/fd/%u", fd);
 	memset(ret, 0, (PATH_MAX + 1));
+	bytes = readlink(path, ret, PATH_MAX);
 
-	if (readlink(path, ret, PATH_MAX) < 0)
+	if (bytes < 0)
 		debug("%s: readlink(%s) failed: %m", __func__,  path);
+	else if (bytes >= PATH_MAX)
+		debug("%s: rejecting readlink(%s) for possble truncation",
+		      __func__, path);
 	else
 		resolved = xstrdup(ret);
 #endif
@@ -449,7 +479,7 @@ extern void send_fd_over_pipe(int socket, int fd)
 	struct msghdr msg = { 0 };
 	struct cmsghdr *cmsg;
 	char buf[CMSG_SPACE(sizeof(fd))];
-	char c;
+	char c = '\0';
 	struct iovec iov[1];
 
 	memset(buf, '\0', sizeof(buf));
@@ -634,4 +664,84 @@ extern int rmdir_recursive(const char *path, bool remove_top)
 		      __func__, path, rc);
 
 	return rc;
+}
+
+extern int fd_get_readable_bytes(int fd, int *readable_ptr,
+				 const char *con_name)
+{
+#ifdef FIONREAD
+	/* default readable to max positive 32 bit signed integer */
+	int readable = INT32_MAX;
+
+	/* assert readable_ptr is set but gracefully allow for it not to be */
+	xassert(readable_ptr);
+
+	if (fd < 0) {
+		log_net(fd, con_name,
+			"Refusing request for ioctl(%d, FIONREAD) with invalid file descriptor: %d",
+			fd, fd);
+		return EINVAL;
+	}
+
+	/* request kernel tell us the size of the incoming buffer */
+	if (ioctl(fd, FIONREAD, &readable)) {
+		int rc = errno;
+		log_net(fd, con_name,
+			"ioctl(%d, FIONREAD, 0x%"PRIxPTR") failed: %s",
+			fd, (uintptr_t) &readable, slurm_strerror(rc));
+		return rc;
+	}
+
+	/* validate response from kernel is sane (or likely sane) */
+	if (readable < 0) {
+		/* invalid FIONREAD response -> bad driver response */
+		log_net(fd, con_name,
+			"Invalid response: ioctl(%d, FIONREAD, 0x%"PRIxPTR")=%d",
+			 fd, (uintptr_t) &readable, readable);
+		return ENOSYS;
+	}
+	/* verify if readable was even set */
+	if (readable == INT32_MAX) {
+		/* ioctl() did not error but did not change readable?? */
+		log_net(fd, con_name,
+			"Invalid unchanged readable value: ioctl(%d, FIONREAD, 0x%"PRIxPTR")=%d",
+			fd, (uintptr_t) &readable, readable);
+		return ENOSYS;
+	}
+
+	if (readable_ptr) {
+		*readable_ptr = readable;
+
+		log_net(fd, con_name,
+			"Successful query: ioctl(%d, FIONREAD, 0x%"PRIxPTR")=%d",
+			 fd, (uintptr_t) readable_ptr, readable);
+	}
+
+	return SLURM_SUCCESS;
+#else /* FIONREAD */
+	return ESLURM_NOT_SUPPORTED;
+#endif /* !FIONREAD */
+}
+
+extern int fd_get_maxmss(int fd, const char *con_name)
+{
+	int mss = NO_VAL;
+	socklen_t tmp_socklen = { 0 };
+
+	if (getsockopt(fd, IPPROTO_TCP, TCP_MAXSEG, &mss, &tmp_socklen))
+		log_net(fd, con_name,
+			"getsockopt(%d, IPPROTO_TCP, TCP_MAXSEG) failed: %m",
+			fd);
+	else
+		log_net(fd, con_name,
+			"getsockopt(%d, IPPROTO_TCP, TCP_MAXSEG)=%d", fd, mss);
+
+	if ((mss < MSS_MIN_BYTES) || (mss > MAX_MSG_SIZE)) {
+		log_net(fd, con_name,
+			"Rejecting invalid response from getsockopt(%d, IPPROTO_TCP, TCP_MAXSEG)=%d",
+			fd, mss);
+		mss = NO_VAL;
+	}
+
+	return mss;
 }

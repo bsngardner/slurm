@@ -50,6 +50,7 @@
 #include "slurm/slurm_errno.h"
 
 #include "src/common/macros.h"
+#include "src/common/slurm_protocol_defs.h"
 #include "src/common/timers.h"
 #include "src/common/uid.h"
 #include "src/common/xmalloc.h"
@@ -63,28 +64,6 @@ typedef struct {
 static pthread_mutex_t uid_lock = PTHREAD_MUTEX_INITIALIZER;
 static uid_cache_entry_t *uid_cache = NULL;
 static int uid_cache_used = 0;
-
-static int _getpwnam_r (const char *name, struct passwd *pwd, char *buf,
-		size_t bufsiz, struct passwd **result)
-{
-	DEF_TIMERS;
-	int rc;
-
-	START_TIMER;
-
-	while (1) {
-		rc = getpwnam_r(name, pwd, buf, bufsiz, result);
-		if (rc == EINTR)
-			continue;
-		if (rc != 0)
-			*result = NULL;
-		break;
-	}
-
-	END_TIMER2(__func__);
-
-	return (rc);
-}
 
 extern int slurm_getpwuid_r (uid_t uid, struct passwd *pwd, char *buf,
 			     size_t bufsiz, struct passwd **result)
@@ -110,8 +89,13 @@ extern int slurm_getpwuid_r (uid_t uid, struct passwd *pwd, char *buf,
 
 int uid_from_string(const char *name, uid_t *uidp)
 {
-	struct passwd pwd, *result;
-	char buffer[PW_BUF_SIZE], *p = NULL;
+	DEF_TIMERS;
+	struct passwd pwd, *result = NULL;
+	char buf_stack[PW_BUF_SIZE];
+	char *buf_malloc = NULL;
+	size_t bufsize = PW_BUF_SIZE;
+	char *curr_buf = buf_stack;
+	char *p = NULL;
 	long l;
 
 	if (!name)
@@ -120,11 +104,38 @@ int uid_from_string(const char *name, uid_t *uidp)
 	/*
 	 *  Check to see if name is a valid username first.
 	 */
-	if ((_getpwnam_r (name, &pwd, buffer, PW_BUF_SIZE, &result) == 0)
-	    && result != NULL) {
+	START_TIMER;
+	while (true) {
+		int rc = getpwnam_r(name, &pwd, curr_buf, bufsize, &result);
+		if (rc == EINTR) {
+			continue;
+		} else if (rc == ERANGE) {
+			bufsize *= 2;
+			curr_buf = xrealloc(buf_malloc, bufsize);
+			continue;
+		} else if (rc) {
+			if (result) {
+				result = NULL;
+				error("%s: getpwnam_r(%s): %s",
+				      __func__, name, slurm_strerror(rc));
+			} else {
+				error("%s: getpwnam_r(%s): no record found",
+				      __func__, name);
+			}
+		}
+		break;
+	}
+	END_TIMER2("getpwnam_r");
+
+	if (result) {
 		*uidp = result->pw_uid;
+		xfree(buf_malloc);
 		return 0;
 	}
+
+	xfree(buf_malloc);
+	curr_buf = buf_stack;
+	bufsize = PW_BUF_SIZE;
 
 	/*
 	 *  If username was not valid, check for a valid UID.
@@ -141,7 +152,7 @@ int uid_from_string(const char *name, uid_t *uidp)
 	/*
 	 *  Now ensure the supplied uid is in the user database
 	 */
-	if ((slurm_getpwuid_r(l, &pwd, buffer, PW_BUF_SIZE, &result) != 0) ||
+	if ((slurm_getpwuid_r(l, &pwd, curr_buf, bufsize, &result) != 0) ||
 	    (result == NULL))
 		return -1;
 
@@ -181,19 +192,6 @@ extern char *uid_to_string(uid_t uid)
 	return result;
 }
 
-static int _uid_compare(const void *a, const void *b)
-{
-	uid_t ua = *(const uid_t *)a;
-	uid_t ub = *(const uid_t *)b;
-
-	if (ua < ub)
-		return -1;
-	else if (ua > ub)
-		return 1;
-
-	return 0;
-}
-
 extern void uid_cache_clear(void)
 {
 	int i;
@@ -213,7 +211,7 @@ extern char *uid_to_string_cached(uid_t uid)
 
 	slurm_mutex_lock(&uid_lock);
 	entry = bsearch(&target, uid_cache, uid_cache_used,
-			sizeof(uid_cache_entry_t), _uid_compare);
+			sizeof(uid_cache_entry_t), slurm_sort_uint_list_asc);
 	if (entry == NULL) {
 		uid_cache_entry_t new_entry = {uid, uid_to_string(uid)};
 		uid_cache_used++;
@@ -221,7 +219,7 @@ extern char *uid_to_string_cached(uid_t uid)
 				     sizeof(uid_cache_entry_t)*uid_cache_used);
 		uid_cache[uid_cache_used-1] = new_entry;
 		qsort(uid_cache, uid_cache_used, sizeof(uid_cache_entry_t),
-		      _uid_compare);
+		      slurm_sort_uint_list_asc);
 		slurm_mutex_unlock(&uid_lock);
 		return new_entry.username;
 	}
@@ -274,54 +272,15 @@ gid_from_uid (uid_t uid)
 	return gid;
 }
 
-static int _getgrnam_r (const char *name, struct group *grp, char *buf,
-		size_t bufsiz, struct group **result)
-{
-	DEF_TIMERS;
-	int rc;
-
-	START_TIMER;
-
-	while (1) {
-		rc = getgrnam_r (name, grp, buf, bufsiz, result);
-		if (rc == EINTR)
-			continue;
-		if (rc != 0)
-			*result = NULL;
-		break;
-	}
-
-	END_TIMER2(__func__);
-
-	return (rc);
-}
-
-static int _getgrgid_r (gid_t gid, struct group *grp, char *buf,
-		size_t bufsiz, struct group **result)
-{
-	DEF_TIMERS;
-	int rc;
-
-	START_TIMER;
-
-	while (1) {
-		rc = getgrgid_r (gid, grp, buf, bufsiz, result);
-		if (rc == EINTR)
-			continue;
-		if (rc != 0)
-			*result = NULL;
-		break;
-	}
-
-	END_TIMER2(__func__);
-
-	return rc;
-}
-
 int gid_from_string(const char *name, gid_t *gidp)
 {
-	struct group grp, *result;
-	char buffer[PW_BUF_SIZE], *p = NULL;
+	DEF_TIMERS;
+	struct group grp, *result = NULL;
+	char buf_stack[PW_BUF_SIZE];
+	char *buf_malloc = NULL;
+	char *curr_buf = buf_stack;
+	size_t bufsize = PW_BUF_SIZE;
+	char *p = NULL;
 	long l;
 
 	if (!name)
@@ -330,9 +289,32 @@ int gid_from_string(const char *name, gid_t *gidp)
 	/*
 	 *  Check for valid group name first.
 	 */
-	if ((_getgrnam_r (name, &grp, buffer, PW_BUF_SIZE, &result) == 0)
-	    && result != NULL) {
+	START_TIMER;
+	while (true) {
+		int rc = getgrnam_r(name, &grp, curr_buf, bufsize, &result);
+		if (rc == EINTR) {
+			continue;
+		} else if (rc == ERANGE) {
+			bufsize *= 2;
+			curr_buf = xrealloc(buf_malloc, bufsize);
+			continue;
+		} else if (rc) {
+			if (result) {
+				result = NULL;
+				error("%s: getgrnam_r(%s): %s",
+				      __func__, name, slurm_strerror(rc));
+			} else {
+				error("%s: getgrnam_r(%s): no record found",
+				      __func__, name);
+			}
+		}
+		break;
+	}
+	END_TIMER2("getgrnam_r");
+
+	if (result) {
 		*gidp = result->gr_gid;
+		xfree(buf_malloc);
 		return 0;
 	}
 
@@ -340,19 +322,45 @@ int gid_from_string(const char *name, gid_t *gidp)
 	 *  If group name was not valid, perhaps it is a  valid GID.
 	 */
 	errno = 0;
-	l = strtol (name, &p, 10);
-	if (((errno == ERANGE) && ((l == LONG_MIN) || (l == LONG_MAX)))
-	   || (name == p)
-	   || (*p != '\0')
-	   || (l < 0)
-	   || (l > INT_MAX))
+	l = strtol(name, &p, 10);
+	if (((errno == ERANGE) && ((l == LONG_MIN) || (l == LONG_MAX))) ||
+	    (name == p) || (*p != '\0') || (l < 0) || (l > INT_MAX)) {
+		xfree(buf_malloc);
 		return -1;
+	}
 
 	/*
 	 *  Now ensure the supplied uid is in the user database
 	 */
-	if ((_getgrgid_r (l, &grp, buffer, PW_BUF_SIZE, &result) != 0)
-	    || result == NULL)
+	START_TIMER;
+	while (true) {
+		int rc = getgrgid_r(l, &grp, curr_buf, bufsize, &result);
+		if (rc == EINTR) {
+			continue;
+		} else if (rc == ERANGE) {
+			bufsize *= 2;
+			curr_buf = xrealloc(buf_malloc, bufsize);
+			continue;
+		} else if (rc) {
+			if (result) {
+				result = NULL;
+				error("%s: getgrgid_r(%ld): %s",
+				      __func__, l, slurm_strerror(rc));
+			} else {
+				error("%s: getgrgid_r(%ld): no record found",
+				      __func__, l);
+			}
+		}
+		break;
+	}
+	END_TIMER2("getgrgid_r");
+
+	xfree(buf_malloc);
+	/*
+	 * Warning - result is now a pointer to invalid memory.
+	 * Do not dereference it, but checking that it is non-NULL is safe.
+	 */
+	if (!result)
 		return -1;
 
 	*gidp = (gid_t) l;
@@ -375,13 +383,41 @@ extern char *gid_to_string(gid_t gid)
  */
 char *gid_to_string_or_null(gid_t gid)
 {
+	DEF_TIMERS;
 	struct group grp, *result;
-	char buffer[PW_BUF_SIZE];
-	int rc;
+	char buf_stack[PW_BUF_SIZE];
+	char *buf_malloc = NULL;
+	size_t bufsize = PW_BUF_SIZE;
+	char *curr_buf = buf_stack;
+	char *name = NULL;
 
-	rc = _getgrgid_r(gid, &grp, buffer, PW_BUF_SIZE, &result);
-	if (rc == 0 && result)
-		return xstrdup(result->gr_name);
+	START_TIMER;
+	while (true) {
+		int rc = getgrgid_r(gid, &grp, curr_buf, bufsize, &result);
+		if (rc == EINTR) {
+			continue;
+		} else if (rc == ERANGE) {
+			bufsize *= 2;
+			curr_buf = xrealloc(buf_malloc, bufsize);
+			continue;
+		} else if (rc) {
+			if (result) {
+				result = NULL;
+				error("%s: getgrgid_r(%d): %s",
+				      __func__, gid, slurm_strerror(rc));
+			} else {
+				error("%s: getgrgid_r(%d): no record found",
+				      __func__, gid);
+			}
+		}
+		break;
+	}
+	END_TIMER2("getgrgid_r");
 
-	return NULL;
+	if (result)
+		name = xstrdup(result->gr_name);
+
+	xfree(buf_malloc);
+
+	return name;
 }

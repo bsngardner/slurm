@@ -84,19 +84,23 @@
 #include "src/interfaces/mcs.h"
 #include "src/interfaces/preempt.h"
 #include "src/interfaces/select.h"
+#include "src/interfaces/topology.h"
 
 
 #include "src/slurmctld/acct_policy.h"
 #include "src/slurmctld/fed_mgr.h"
 #include "src/slurmctld/front_end.h"
-#include "src/slurmctld/gres_ctld.h"
 #include "src/slurmctld/job_scheduler.h"
 #include "src/slurmctld/licenses.h"
 #include "src/slurmctld/locks.h"
 #include "src/slurmctld/node_scheduler.h"
+#include "src/slurmctld/proc_req.h"
 #include "src/slurmctld/reservation.h"
 #include "src/slurmctld/slurmctld.h"
-#include "src/slurmctld/srun_comm.h"
+
+#include "src/stepmgr/gres_stepmgr.h"
+#include "src/stepmgr/srun_comm.h"
+
 #include "backfill.h"
 
 #define BACKFILL_INTERVAL	30
@@ -1449,7 +1453,7 @@ static int _bf_reserve_running(void *x, void *arg)
 	if (!job_ptr || !IS_JOB_RUNNING(job_ptr) || !job_ptr->job_resrcs)
 		return SLURM_SUCCESS;
 
-	whole = (job_ptr->job_resrcs->whole_node == WHOLE_NODE_REQUIRED);
+	whole = (job_ptr->job_resrcs->whole_node & WHOLE_NODE_REQUIRED);
 	licenses = (job_ptr->license_list);
 
 	if (!whole && !licenses)
@@ -2578,7 +2582,8 @@ next_task:
 				save_share_res  = job_ptr->details->share_res;
 				save_whole_node = job_ptr->details->whole_node;
 				job_ptr->details->share_res = 0;
-				job_ptr->details->whole_node = 1;
+				job_ptr->details->whole_node |=
+					WHOLE_NODE_REQUIRED;
 				if (!save_whole_node)
 					job_ptr->bit_flags |= BF_WHOLE_NODE_TEST;
 				test_fini = 0;
@@ -3039,10 +3044,10 @@ skip_start:
 				(uint64_t)selected_node_cnt;
 
 			assoc_mgr_lock(&locks);
-			gres_ctld_set_job_tres_cnt(job_ptr->gres_list_req,
-						   selected_node_cnt,
-						   tres_req_cnt,
-						   true);
+			gres_stepmgr_set_job_tres_cnt(job_ptr->gres_list_req,
+						      selected_node_cnt,
+						      tres_req_cnt,
+						      true);
 
 			tres_req_cnt[TRES_ARRAY_BILLING] =
 				assoc_mgr_tres_weighted(
@@ -3082,6 +3087,10 @@ skip_start:
 		reject_array_job = NULL;
 		reject_array_part = NULL;
 		reject_array_resv = NULL;
+
+		if (IS_JOB_WHOLE_TOPO(job_ptr)) {
+			topology_g_whole_topo(avail_bitmap);
+		}
 
 		if ((orig_start_time == 0) ||
 		    (job_ptr->start_time < orig_start_time)) {
@@ -3505,6 +3514,13 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
 {
 	bool overlap = false;
 	int j = 0;
+	bitstr_t *use_bitmap_efctv = NULL;
+
+	if (IS_JOB_WHOLE_TOPO(job_ptr)) {
+		use_bitmap_efctv = bit_copy(use_bitmap);
+		topology_g_whole_topo(use_bitmap_efctv);
+		use_bitmap = use_bitmap_efctv;
+	}
 
 	while (true) {
 		if ((node_space[j].end_time > start_time) &&
@@ -3528,6 +3544,7 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
 		if ((j = node_space[j].next) == 0)
 			break;
 	}
+	FREE_NULL_BITMAP(use_bitmap_efctv);
 	return overlap;
 }
 
@@ -3810,9 +3827,9 @@ static bool _het_job_limit_check(het_job_map_t *map, time_t now)
 		tres_req_cnt[TRES_ARRAY_NODE] = (uint64_t)selected_node_cnt;
 
 		assoc_mgr_lock(&locks);
-		gres_ctld_set_job_tres_cnt(job_ptr->gres_list_req,
-					   selected_node_cnt,
-					   tres_req_cnt, true);
+		gres_stepmgr_set_job_tres_cnt(job_ptr->gres_list_req,
+					      selected_node_cnt,
+					      tres_req_cnt, true);
 
 		tres_req_cnt[TRES_ARRAY_BILLING] =
 			assoc_mgr_tres_weighted(
@@ -3872,7 +3889,7 @@ static int _het_job_start_now(het_job_map_t *map, node_space_map_t *node_space)
 	bitstr_t *resv_bitmap = NULL, *used_bitmap = NULL;
 	het_job_rec_t *rec;
 	list_itr_t *iter;
-	int mcs_select, rc = SLURM_SUCCESS;
+	int rc = SLURM_SUCCESS;
 	bool resv_overlap = false;
 	time_t now = time(NULL), start_res;
 	uint32_t hard_limit;
@@ -3905,9 +3922,6 @@ static int _het_job_start_now(het_job_map_t *map, node_space_map_t *node_space)
 		bit_and(avail_bitmap, up_node_bitmap);
 		if (used_bitmap)
 			bit_and_not(avail_bitmap, used_bitmap);
-		filter_by_node_owner(job_ptr, avail_bitmap);
-		mcs_select = slurm_mcs_get_select(job_ptr);
-		filter_by_node_mcs(job_ptr, mcs_select, avail_bitmap);
 		if (job_ptr->details->exc_node_bitmap) {
 			bit_and_not(avail_bitmap,
 				job_ptr->details->exc_node_bitmap);

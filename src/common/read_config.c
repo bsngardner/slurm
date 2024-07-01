@@ -124,8 +124,6 @@ static bool conf_initialized = false;
 static s_p_hashtbl_t *default_frontend_tbl;
 static s_p_hashtbl_t *default_nodename_tbl;
 static s_p_hashtbl_t *default_partition_tbl;
-static log_level_t lvl = LOG_LEVEL_FATAL;
-static int	local_test_config_rc = SLURM_SUCCESS;
 static list_t *config_files = NULL;
 
 inline static void _normalize_debug_level(uint16_t *level);
@@ -142,6 +140,7 @@ typedef struct names_ll_s {
 	slurm_addr_t bcast_addr;
 	bool addr_initialized;
 	bool bcast_addr_initialized;
+	bool is_cloud;
 	bool is_dynamic;
 	struct names_ll_s *next_alias;
 	struct names_ll_s *next_hostname;
@@ -202,7 +201,7 @@ static uint16_t *_parse_srun_ports(const char *);
 static void _push_to_hashtbls(char *alias, char *hostname, char *address,
 			      char *bcast_address, uint16_t port,
 			      bool front_end, slurm_addr_t *addr,
-			      bool initialized, bool dynamic);
+			      bool initialized, bool dynamic, bool cloud);
 
 static s_p_options_t slurm_conf_stepd_options[] = {
 	{.key = "NodeName",
@@ -564,8 +563,7 @@ static int _parse_frontend(void **dest, slurm_parser_enum_t type,
 	};
 
 #ifndef HAVE_FRONT_END
-	log_var(lvl, "Use of FrontendName in slurm.conf without Slurm being configured/built with the --enable-front-end option");
-	local_test_config_rc = 1;
+	fatal("Use of FrontendName in slurm.conf without Slurm being configured/built with the --enable-front-end option");
 #endif
 
 	tbl = s_p_hashtbl_create(_frontend_options);
@@ -599,14 +597,10 @@ static int _parse_frontend(void **dest, slurm_parser_enum_t type,
 		(void) s_p_get_string(&n->allow_users,  "AllowUsers", tbl);
 		(void) s_p_get_string(&n->deny_groups,  "DenyGroups", tbl);
 		(void) s_p_get_string(&n->deny_users,   "DenyUsers", tbl);
-		if (n->allow_groups && n->deny_groups) {
-			log_var(lvl, "FrontEnd options AllowGroups and DenyGroups are incompatible");
-			local_test_config_rc = 1;
-		}
-		if (n->allow_users && n->deny_users) {
-			log_var(lvl, "FrontEnd options AllowUsers and DenyUsers are incompatible");
-			local_test_config_rc = 1;
-		}
+		if (n->allow_groups && n->deny_groups)
+			fatal("FrontEnd options AllowGroups and DenyGroups are incompatible");
+		if (n->allow_users && n->deny_users)
+			fatal("FrontEnd options AllowUsers and DenyUsers are incompatible");
 
 		if (!s_p_get_string(&n->addresses, "FrontendAddr", tbl))
 			n->addresses = xstrdup(n->frontends);
@@ -667,6 +661,7 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		{"Procs", S_P_UINT16},
 		{"RealMemory", S_P_UINT64},
 		{"Reason", S_P_STRING},
+		{"RestrictedCoresPerGPU", S_P_UINT16},
 		{"Sockets", S_P_UINT16},
 		{"SocketsPerBoard", S_P_UINT16},
 		{"State", S_P_STRING},
@@ -742,8 +737,8 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		    s_p_get_string(&cpu_bind, "CpuBind", dflt)) {
 			if (xlate_cpu_bind_str(cpu_bind, &n->cpu_bind) !=
 			    SLURM_SUCCESS) {
-				error("NodeNames=%s CpuBind=\'%s\' is invalid, ignored",
-				      n->nodenames, cpu_bind);
+				error_in_daemon("NodeNames=%s CpuBind=\'%s\' is invalid, ignored",
+						n->nodenames, cpu_bind);
 				n->cpu_bind = 0;
 			}
 			xfree(cpu_bind);
@@ -792,6 +787,11 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		if (!s_p_get_string(&n->reason, "Reason", tbl))
 			s_p_get_string(&n->reason, "Reason", dflt);
 
+		if (!s_p_get_uint16(&n->res_cores_per_gpu,
+				    "RestrictedCoresPerGPU", tbl))
+			s_p_get_uint16(&n->res_cores_per_gpu,
+				       "RestrictedCoresPerGPU", dflt);
+
 		if (!s_p_get_uint16(&n->tot_sockets, "Sockets", tbl) &&
 		    !s_p_get_uint16(&n->tot_sockets, "Sockets", dflt)) {
 			no_sockets = true;
@@ -825,44 +825,45 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		s_p_hashtbl_destroy(tbl);
 
 		if (n->cores == 0) {	/* make sure cores is non-zero */
-			error("NodeNames=%s CoresPerSocket=0 is invalid, "
-			      "reset to 1", n->nodenames);
+			error_in_daemon("NodeNames=%s CoresPerSocket=0 is invalid, reset to 1",
+					n->nodenames);
 			n->cores = 1;
 		}
 		if (n->cpus == 0) {	/* make sure cpus is non-zero */
-			error("NodeNames=%s CPUs=0 is invalid, "
-			      "reset to 1", n->nodenames);
+			error_in_daemon("NodeNames=%s CPUs=0 is invalid, reset to 1",
+					n->nodenames);
 			n->cpus = 1;
 		}
 		if (n->threads == 0) {	/* make sure threads is non-zero */
-			error("NodeNames=%s ThreadsPerCore=0 is invalid, "
-			      "reset to 1", n->nodenames);
+			error_in_daemon("NodeNames=%s ThreadsPerCore=0 is invalid, reset to 1",
+					n->nodenames);
 			n->threads = 1;
 		}
 
 		if (sockets_per_board == 0) {
 			/* make sure sockets_per_boards is non-zero */
-			error("NodeNames=%s SocketsPerBoards=0 is invalid, "
-			      "reset to 1", n->nodenames);
+			error_in_daemon("NodeNames=%s SocketsPerBoards=0 is invalid, reset to 1",
+					n->nodenames);
 			sockets_per_board = 1;
 		}
 
 		if (n->tot_sockets == 0) {
 			/* make sure tot_sockets is non-zero */
-			error("NodeNames=%s Sockets=0 is invalid, reset to 1", n->nodenames);
+			error_in_daemon("NodeNames=%s Sockets=0 is invalid, reset to 1",
+					n->nodenames);
 			n->tot_sockets = 1;
 		}
 
 		if (!no_sockets_per_board && !no_sockets) {
-			error("NodeNames=%s Sockets=# and SocketsPerBoard=# is invalid , using SocketsPerBoard",
-			      n->nodenames);
+			error_in_daemon("NodeNames=%s Sockets=# and SocketsPerBoard=# is invalid , using SocketsPerBoard",
+					n->nodenames);
 			no_sockets = true;
 		}
 
 		if (n->boards == 0) {
 			/* make sure boards is non-zero */
-			error("NodeNames=%s Boards=0 is invalid, reset to 1",
-			      n->nodenames);
+			error_in_daemon("NodeNames=%s Boards=0 is invalid, reset to 1",
+					n->nodenames);
 			n->boards = 1;
 		}
 
@@ -894,10 +895,10 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		}
 
 		if (n->tot_sockets < n->boards) {
-			error("NodeNames=%s Sockets(%d) < Boards(%d) resetting Boards=1",
-			      n->nodenames,
-			      n->tot_sockets,
-			      n->boards);
+			error_in_daemon("NodeNames=%s Sockets(%d) < Boards(%d) resetting Boards=1",
+					n->nodenames,
+					n->tot_sockets,
+					n->boards);
 			n->boards = 1;
 		}
 
@@ -905,38 +906,36 @@ static int _parse_nodename(void **dest, slurm_parser_enum_t type,
 		if ((n->cpus != n->tot_sockets) &&
 		    (n->cpus != n->tot_sockets * n->cores) &&
 		    (n->cpus != n->tot_sockets * n->cores * n->threads)) {
-			error("NodeNames=%s CPUs=%d match no Sockets, Sockets*CoresPerSocket or Sockets*CoresPerSocket*ThreadsPerCore. Resetting CPUs.",
-			      n->nodenames, n->cpus);
+			error_in_daemon("NodeNames=%s CPUs=%d match no Sockets, Sockets*CoresPerSocket or Sockets*CoresPerSocket*ThreadsPerCore. Resetting CPUs.",
+					n->nodenames, n->cpus);
 			n->cpus = n->tot_sockets * n->cores * n->threads;
 		}
 
 		if (n->core_spec_cnt >= (n->tot_sockets * n->cores)) {
-			error("NodeNames=%s CoreSpecCount=%u is invalid, "
-			      "reset to 1", n->nodenames, n->core_spec_cnt);
+			error_in_daemon("NodeNames=%s CoreSpecCount=%u is invalid, reset to 1",
+					n->nodenames, n->core_spec_cnt);
 			n->core_spec_cnt = 1;
 		}
 
 		if (n->cpu_spec_list) {
 			bitstr_t *cpu_spec_bitmap = bit_alloc(n->cpus);
 			if (bit_unfmt(cpu_spec_bitmap, n->cpu_spec_list)) {
-				error("NodeNames=%s CpuSpecList=%s - unable to convert it to bitmap of size CPUs=%d. Ignoring CpuSpecList.",
-				      n->nodenames, n->cpu_spec_list, n->cpus);
+				error_in_daemon("NodeNames=%s CpuSpecList=%s - unable to convert it to bitmap of size CPUs=%d. Ignoring CpuSpecList.",
+						n->nodenames, n->cpu_spec_list, n->cpus);
 				xfree(n->cpu_spec_list);
 			}
 			FREE_NULL_BITMAP(cpu_spec_bitmap);
 		}
 
 		if ((n->core_spec_cnt > 0) && n->cpu_spec_list) {
-			error("NodeNames=%s CoreSpecCount=%u is invalid "
-			      "with CPUSpecList, reset to 0",
-			      n->nodenames, n->core_spec_cnt);
+			error_in_daemon("NodeNames=%s CoreSpecCount=%u is invalid with CPUSpecList, reset to 0",
+					n->nodenames, n->core_spec_cnt);
 			n->core_spec_cnt = 0;
 		}
 
 		if (n->mem_spec_limit >= n->real_memory) {
-			error("NodeNames=%s MemSpecLimit=%"
-			      ""PRIu64" is invalid, reset to 0",
-			      n->nodenames, n->mem_spec_limit);
+			error_in_daemon("NodeNames=%s MemSpecLimit=%"PRIu64" is invalid, reset to 0",
+					n->nodenames, n->mem_spec_limit);
 			n->mem_spec_limit = 0;
 		}
 
@@ -1155,8 +1154,7 @@ int slurm_conf_frontend_array(slurm_conf_frontend_t **ptr_array[])
 			if (!s_p_get_array((void ***)&node_ptr, &node_count,
 					   "NodeName", conf_hashtbl) ||
 			    (node_count == 0)) {
-				log_var(lvl, "No front end nodes configured");
-				local_test_config_rc = 1;
+				fatal("No front end nodes configured");
 			}
 			strlcpy(addresses, node_ptr[0]->addresses,
 				sizeof(addresses));
@@ -1381,6 +1379,7 @@ static int _parse_partitionname(void **dest, slurm_parser_enum_t type,
 		{"DenyQos", S_P_STRING},
 		{"DisableRootJobs", S_P_BOOLEAN}, /* YES or NO */
 		{"ExclusiveUser", S_P_BOOLEAN}, /* YES or NO */
+		{"ExclusiveTopo", S_P_BOOLEAN}, /* YES or NO */
 		{"GraceTime", S_P_UINT32},
 		{"Hidden", S_P_BOOLEAN}, /* YES or NO */
 		{"LLN", S_P_BOOLEAN}, /* YES or NO */
@@ -1572,6 +1571,9 @@ static int _parse_partitionname(void **dest, slurm_parser_enum_t type,
 				"DisableRootJobs", tbl);
 
 		s_p_get_boolean((bool *)&p->exclusive_user, "ExclusiveUser",
+				tbl);
+
+		s_p_get_boolean((bool *)&p->exclusive_topo, "ExclusiveTopo",
 				tbl);
 
 		if (!s_p_get_boolean(&p->hidden_flag, "Hidden", tbl))
@@ -2218,7 +2220,7 @@ static int _get_hash_idx(const char *name)
 static void _push_to_hashtbls(char *alias, char *hostname, char *address,
 			      char *bcast_address, uint16_t port,
 			      bool front_end, slurm_addr_t *addr,
-			      bool initialized, bool dynamic)
+			      bool initialized, bool dynamic, bool cloud)
 {
 	int hostname_idx, alias_idx;
 	names_ll_t *p, *new;
@@ -2243,13 +2245,10 @@ static void _push_to_hashtbls(char *alias, char *hostname, char *address,
 	while (p) {
 		if (xstrcmp(p->alias, alias) == 0) {
 			if (front_end)
-				log_var(lvl, "Frontend not configured correctly in slurm.conf. See FrontEndName in slurm.conf man page.");
+				fatal("Frontend not configured correctly in slurm.conf. See FrontEndName in slurm.conf man page.");
 			else
-				log_var(lvl, "Duplicated NodeName %s in the config file",
-					p->alias);
-			local_test_config_rc = 1;
-
-			return;
+				fatal("Duplicated NodeName %s in the config file",
+				      p->alias);
 		}
 		p = p->next_alias;
 	}
@@ -2262,6 +2261,7 @@ static void _push_to_hashtbls(char *alias, char *hostname, char *address,
 	new->bcast_address = xstrdup(bcast_address);
 	new->port	= port;
 	new->addr_initialized = initialized;
+	new->is_cloud = cloud;
 	new->is_dynamic = dynamic;
 
 	if (addr)
@@ -2325,7 +2325,7 @@ static int _register_front_ends(slurm_conf_frontend_t *front_end_ptr)
 		address = hostlist_shift(address_list);
 		_push_to_hashtbls(hostname, hostname, address, NULL,
 				  front_end_ptr->port, true, NULL, false,
-				  false);
+				  false, false);
 		free(hostname);
 		free(address);
 	}
@@ -2342,7 +2342,7 @@ static int _check_callback(char *alias, char *hostname, char *address,
 			   slurm_conf_node_t *node_ptr,
 			   config_record_t *config_ptr)
 {
-	bool dynamic_addr = false;
+	bool dynamic_addr = false, cloud_node = false;
 	static bool cloud_dns = false;
 	static time_t last_update = 0;
 
@@ -2359,8 +2359,12 @@ static int _check_callback(char *alias, char *hostname, char *address,
 	     (state_val & NODE_STATE_FUTURE)))
 		dynamic_addr = true;
 
+	if (!running_in_slurmctld() &&
+	    (state_val & NODE_STATE_CLOUD))
+		cloud_node = true;
+
 	_push_to_hashtbls(alias, hostname, address, bcast_address, port,
-			  false, NULL, false, dynamic_addr);
+			  false, NULL, false, dynamic_addr, cloud_node);
 	return SLURM_SUCCESS;
 }
 
@@ -2376,10 +2380,8 @@ static void _init_slurmd_nodehash(void)
 		nodehash_initialized = true;
 
 	if (!conf_initialized) {
-		if (_init_slurm_conf(NULL) != SLURM_SUCCESS) {
-			log_var(lvl, "Unable to process slurm.conf file");
-			local_test_config_rc = 1;
-		}
+		if (_init_slurm_conf(NULL) != SLURM_SUCCESS)
+			fatal("Unable to process slurm.conf file");
 	}
 
 	count = slurm_conf_nodename_array(&ptr_array);
@@ -2764,7 +2766,7 @@ extern void slurm_reset_alias(char *node_name, char *node_addr,
 	}
 	if (!p) {
 		_push_to_hashtbls(node_name, node_hostname, node_addr,
-				  NULL, 0, false, NULL, false, false);
+				  NULL, 0, false, NULL, false, false, false);
 	}
 	slurm_conf_unlock();
 
@@ -2822,7 +2824,8 @@ extern int slurm_conf_get_addr(const char *node_name, slurm_addr_t *address,
 			slurm_conf_unlock();
 			return SLURM_ERROR;
 		}
-		p->addr_initialized = true;
+		if (!p->is_cloud)
+			p->addr_initialized = true;
 	}
 
 	*address = p->addr;
@@ -3517,11 +3520,8 @@ extern int slurm_conf_init(const char *file_name)
 	}
 
 	config_file = xstrdup(file_name);
-	if (_establish_config_source(&config_file, &memfd) != SLURM_SUCCESS) {
-		log_var(lvl, "Could not establish a configuration source");
-		xfree(config_file);
-		return SLURM_ERROR;
-	}
+	if (_establish_config_source(&config_file, &memfd) != SLURM_SUCCESS)
+		fatal("Could not establish a configuration source");
 	debug("%s: using config_file=%s", __func__, config_file);
 
 	/*
@@ -3549,10 +3549,8 @@ extern int slurm_conf_init(const char *file_name)
 #endif
 
 	init_slurm_conf(conf_ptr);
-	if (_init_slurm_conf(config_file) != SLURM_SUCCESS) {
-		log_var(lvl, "Unable to process configuration file");
-		local_test_config_rc = 1;
-	}
+	if (_init_slurm_conf(config_file) != SLURM_SUCCESS)
+		fatal("Unable to process configuration file");
 
 	if (memfd)
 		unsetenv("SLURM_CONF");
@@ -3579,11 +3577,8 @@ static int _internal_reinit(const char *file_name)
 		_destroy_slurm_conf();
 	}
 
-	if (_init_slurm_conf(name) != SLURM_SUCCESS) {
-		log_var(lvl, "Unable to process configuration file");
-		local_test_config_rc = 1;
-	}
-
+	if (_init_slurm_conf(name) != SLURM_SUCCESS)
+		fatal("Unable to process configuration file");
 
 	return rc;
 }
@@ -4384,20 +4379,22 @@ static int _validate_and_set_defaults(slurm_conf_t *conf,
 	 * Parse keepalivetime option here so CommunicationParameters takes
 	 * precedence over the deprecated KeepAliveTime standalone option.
 	 */
+	conf->keepalive_interval = DEFAULT_KEEPALIVE_INTERVAL;
 	if ((temp_str = xstrcasestr(slurm_conf.comm_params,
 				    "keepaliveinterval="))) {
 		long tmp_val = strtol(temp_str + 18, NULL, 10);
 		if (tmp_val >= 0 && tmp_val <= INT_MAX)
-			slurm_conf.keepalive_interval = tmp_val;
+			conf->keepalive_interval = tmp_val;
 		else
 			error("CommunicationParameters option keepaliveinterval=%ld is invalid, ignored",
 			      tmp_val);
 	}
+	conf->keepalive_probes = DEFAULT_KEEPALIVE_PROBES;
 	if ((temp_str = xstrcasestr(slurm_conf.comm_params,
 				    "keepaliveprobes="))) {
 		long tmp_val = strtol(temp_str + 16, NULL, 10);
 		if (tmp_val >= 0 && tmp_val <= INT_MAX)
-			slurm_conf.keepalive_probes = tmp_val;
+			conf->keepalive_probes = tmp_val;
 		else
 			error("CommunicationParameters option keepaliveprobes=%ld is invalid, ignored",
 			      tmp_val);
@@ -4406,7 +4403,7 @@ static int _validate_and_set_defaults(slurm_conf_t *conf,
 				    "keepalivetime="))) {
 		long tmp_val = strtol(temp_str + 14, NULL, 10);
 		if ((tmp_val >= 0) && (tmp_val <= INT_MAX))
-			slurm_conf.keepalive_time = tmp_val;
+			conf->keepalive_time = tmp_val;
 		else
 			error("CommunicationParameters option keepalivetime=%ld is invalid, ignored",
 			      tmp_val);
@@ -4678,6 +4675,8 @@ static int _validate_and_set_defaults(slurm_conf_t *conf,
 			conf->conf_flags |= CONF_FLAG_SJX;
 		if (xstrcasestr(temp_str, "job_script"))
 			conf->conf_flags |= CONF_FLAG_SJS;
+		if (xstrcasestr(temp_str, "no_stdio"))
+			conf->conf_flags |= CONF_FLAG_NO_STDIO;
 		xfree(temp_str);
 	}
 
@@ -5131,8 +5130,11 @@ static int _validate_and_set_defaults(slurm_conf_t *conf,
 		}
 		conf->select_type_param = type_param;
 		xfree(temp_str);
-	} else
+	} else if (xstrstr(conf->select_type, "cons_tres")) {
+		slurm_conf.select_type_param = (CR_CORE | CR_MEMORY);
+	} else {
 		conf->select_type_param = 0;
+	}
 
 	if (!s_p_get_string( &conf->slurm_user_name, "SlurmUser", hashtbl)) {
 		conf->slurm_user_name = xstrdup("root");
@@ -5620,6 +5622,12 @@ extern char * prolog_flags2str(uint16_t prolog_flags)
 		xstrcat(rc, "Contain");
 	}
 
+	if (prolog_flags & PROLOG_FLAG_RUN_IN_JOB) {
+		if (rc)
+			xstrcat(rc, ",");
+		xstrcat(rc, "RunInJob");
+	}
+
 	if (prolog_flags & PROLOG_FLAG_DEFER_BATCH) {
 		if (rc)
 			xstrcat(rc, ",");
@@ -5673,6 +5681,9 @@ extern uint16_t prolog_str2flags(char *prolog_flags)
 			rc |= PROLOG_FLAG_ALLOC;
 		else if (xstrcasecmp(tok, "Contain") == 0)
 			rc |= (PROLOG_FLAG_ALLOC | PROLOG_FLAG_CONTAIN);
+		else if (!xstrcasecmp(tok, "RunInJob"))
+			rc |= (PROLOG_FLAG_ALLOC | PROLOG_FLAG_CONTAIN |
+			       PROLOG_FLAG_RUN_IN_JOB);
 		else if (xstrcasecmp(tok, "DeferBatch") == 0)
 			rc |= PROLOG_FLAG_DEFER_BATCH;
 		else if (xstrcasecmp(tok, "NoHold") == 0)
@@ -5699,6 +5710,9 @@ extern uint16_t prolog_str2flags(char *prolog_flags)
 		tok = strtok_r(NULL, ",", &last);
 	}
 	xfree(tmp_str);
+
+	if ((rc & PROLOG_FLAG_RUN_IN_JOB) && (rc & PROLOG_FLAG_SERIAL))
+		error("PrologFlag Serial is incompatible with RunInJob");
 
 	return rc;
 }
@@ -5729,6 +5743,11 @@ extern char * debug_flags2str(uint64_t debug_flags)
 		if (rc)
 			xstrcat(rc, ",");
 		xstrcat(rc, "Agent");
+	}
+	if (debug_flags & DEBUG_FLAG_AUDIT_RPCS) {
+		if (rc)
+			xstrcat(rc, ",");
+		xstrcat(rc, "AuditRPCs");
 	}
 	if (debug_flags & DEBUG_FLAG_BACKFILL) {
 		if (rc)
@@ -5985,10 +6004,10 @@ extern char * debug_flags2str(uint64_t debug_flags)
 			xstrcat(rc, ",");
 		xstrcat(rc, "Triggers");
 	}
-	if (debug_flags & DEBUG_FLAG_WORKQ) {
+	if (debug_flags & DEBUG_FLAG_CONMGR) {
 		if (rc)
 			xstrcat(rc, ",");
-		xstrcat(rc, "WorkQueue");
+		xstrcat(rc, "ConMgr");
 	}
 
 	return rc;
@@ -6018,6 +6037,8 @@ extern int debug_str2flags(const char *debug_flags, uint64_t *flags_out)
 			(*flags_out) |= DEBUG_FLAG_ACCRUE;
 		else if (xstrcasecmp(tok, "Agent") == 0)
 			(*flags_out) |= DEBUG_FLAG_AGENT;
+		else if (!xstrcasecmp(tok, "AuditRPCs"))
+			(*flags_out) |= DEBUG_FLAG_AUDIT_RPCS;
 		else if (xstrcasecmp(tok, "Backfill") == 0)
 			(*flags_out) |= DEBUG_FLAG_BACKFILL;
 		else if (xstrcasecmp(tok, "BackfillMap") == 0)
@@ -6133,9 +6154,10 @@ extern int debug_str2flags(const char *debug_flags, uint64_t *flags_out)
 		else if ((xstrcasecmp(tok, "Power") == 0) ||
 			 (xstrcasecmp(tok, "PowerSave") == 0))
 			(*flags_out) |= DEBUG_FLAG_POWER;
-		else if (xstrcasecmp(tok, "WorkQueue") == 0 ||
-			 xstrcasecmp(tok, "WorkQ") == 0)
-			(*flags_out) |= DEBUG_FLAG_WORKQ;
+		else if (!xstrcasecmp(tok, "WorkQueue") ||
+			 !xstrcasecmp(tok, "WorkQ") ||
+			 !xstrcasecmp(tok, "ConMgr"))
+			(*flags_out) |= DEBUG_FLAG_CONMGR;
 		else {
 			error("Invalid DebugFlag: %s", tok);
 			(*flags_out) = 0;
@@ -6471,7 +6493,7 @@ extern int add_remote_nodes_to_conf_tbls(char *node_list,
 	while ((hostname = hostlist_shift(host_list))) {
 		_internal_conf_remove_node(hostname);
 		_push_to_hashtbls(hostname, hostname, NULL, NULL, 0,
-				  false, &node_addrs[i++], true, true);
+				  false, &node_addrs[i++], true, true, false);
 		free(hostname);
 	}
 	slurm_conf_unlock();
@@ -6481,25 +6503,6 @@ extern int add_remote_nodes_to_conf_tbls(char *node_list,
 	return SLURM_SUCCESS;
 }
 
-/*
- * Get result of configuration file test.
- * RET SLURM_SUCCESS or error code
- */
-extern int config_test_result(void)
-{
-	return local_test_config_rc;
-}
-
-
-/*
- * Start configuration file test mode. Disables fatal errors.
- */
-extern void config_test_start(void)
-{
-	lvl = LOG_LEVEL_ERROR;
-	local_test_config_rc = 0;
-}
-
 extern void slurm_conf_add_node(node_record_t *node_ptr)
 {
 	slurm_conf_lock();
@@ -6507,7 +6510,7 @@ extern void slurm_conf_add_node(node_record_t *node_ptr)
 
 	_push_to_hashtbls(node_ptr->name, node_ptr->node_hostname,
 			  node_ptr->comm_name, node_ptr->bcast_address,
-			  node_ptr->port, false, NULL, false, false);
+			  node_ptr->port, false, NULL, false, false, false);
 	slurm_conf_unlock();
 }
 

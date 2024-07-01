@@ -617,6 +617,12 @@ slurm_sprint_job_info ( job_info_t * job_ptr, int one_liner )
 	if (job_ptr->batch_features || job_ptr->batch_host)
 		xstrcat(out, line_end);
 
+	/****** Line 14 (optional) ******/
+	if (job_ptr->bitflags & STEPMGR_ENABLED) {
+		xstrfmtcat(out, "StepMgrEnabled=Yes");
+		xstrcat(out, line_end);
+	}
+
 	/****** Line 14a (optional) ******/
 	if (job_ptr->fed_siblings_active || job_ptr->fed_siblings_viable) {
 		xstrfmtcat(out, "FedOrigin=%s FedViableSiblings=%s FedActiveSiblings=%s",
@@ -1077,6 +1083,12 @@ slurm_sprint_job_info ( job_info_t * job_ptr, int one_liner )
 	if (job_ptr->selinux_context) {
 		xstrcat(out, line_end);
 		xstrfmtcat(out, "SELinuxContext=%s", job_ptr->selinux_context);
+	}
+
+	/****** Line (optional) ******/
+	if (job_ptr->resv_ports) {
+		xstrcat(out, line_end);
+		xstrfmtcat(out, "ResvPorts=%s", job_ptr->resv_ports);
 	}
 
 	xstrcat(out, line_end);

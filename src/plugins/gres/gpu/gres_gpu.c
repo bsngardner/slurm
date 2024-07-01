@@ -143,12 +143,7 @@ static int _sort_gpu_by_type_name(void *x, void *y)
 	 * By default, qsort orders in ascending order (smallest first). We want
 	 * descending order (longest first), so invert order by negating.
 	 */
-	if (val1 < val2)
-		ret = 1;
-	else if (val1 > val2)
-		ret = -1;
-	else
-		ret = 0;
+	ret = slurm_sort_int_list_desc(&val1, &val2);
 
 	/* Sort by type name value if type name length is equal */
 	if (ret == 0)
@@ -374,12 +369,7 @@ static int _sort_gpu_by_links_order(void *x, void *y)
 	if (index_x < -1 || index_y < -1)
 		error("%s: invalid links value found", __func__);
 
-	if (index_x < index_y)
-		return -1;
-	else if (index_x > index_y)
-		return 1;
-
-	return 0;
+	return slurm_sort_int_list_asc(&index_x, &index_y);
 }
 
 /*

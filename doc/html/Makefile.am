@@ -38,6 +38,7 @@ generated_html = \
 	job_container_tmpfs.html \
 	job_exit_code.html \
 	job_launch.html \
+	job_reason_codes.html \
 	job_submit_plugins.html \
 	jwt.html \
 	kubernetes.html \
@@ -85,6 +86,7 @@ generated_html = \
 	topology.html \
 	tres.html \
 	troubleshoot.html \
+	upgrades.html \
 	user_permissions.html \
 	wckey.html
 

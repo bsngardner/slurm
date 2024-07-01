@@ -101,6 +101,7 @@
 #include "src/interfaces/job_container.h"
 #include "src/interfaces/jobacct_gather.h"
 #include "src/interfaces/mpi.h"
+#include "src/interfaces/prep.h"
 #include "src/interfaces/proctrack.h"
 #include "src/interfaces/switch.h"
 #include "src/interfaces/task.h"
@@ -109,6 +110,7 @@
 #include "src/slurmd/common/privileges.h"
 #include "src/slurmd/common/set_oomadj.h"
 #include "src/slurmd/common/slurmd_cgroup.h"
+#include "src/slurmd/common/slurmd_common.h"
 #include "src/slurmd/common/xcpuinfo.h"
 
 #include "src/slurmd/slurmd/slurmd.h"
@@ -216,6 +218,7 @@ mgr_launch_tasks_setup(launch_tasks_request_msg_t *msg, slurm_addr_t *cli,
 	step->accel_bind_type = msg->accel_bind_type;
 	step->tres_bind = xstrdup(msg->tres_bind);
 	step->tres_freq = xstrdup(msg->tres_freq);
+	step->stepmgr = xstrdup(msg->stepmgr);
 
 	return step;
 }
@@ -803,6 +806,22 @@ _one_step_complete_msg(stepd_step_rec_t *step, int first, int last)
 		       step_complete.rank, first, last);
 	}
 
+	if (step->stepmgr) {
+		slurm_msg_t resp_msg;
+
+		slurm_msg_t_init(&resp_msg);
+
+		slurm_conf_get_addr(step->stepmgr, &req.address,
+				    req.flags);
+		slurm_msg_set_r_uid(&req, slurm_conf.slurmd_user_id);
+		msg.send_to_stepmgr = true;
+		debug3("sending complete to step_ctld host:%s",
+		       step->stepmgr);
+		if (slurm_send_recv_node_msg(&req, &resp_msg, 0))
+			return;
+		goto finished;
+	}
+
 	/* Retry step complete RPC send to slurmctld indefinitely.
 	 * Prevent orphan job step if slurmctld is down */
 	i = 1;
@@ -1203,6 +1222,54 @@ static int _set_xauthority(stepd_step_rec_t *step)
 	return rc;
 }
 
+static int _run_prolog_epilog(stepd_step_rec_t *step, bool is_epilog)
+{
+	int rc = SLURM_SUCCESS;
+	job_env_t job_env;
+	list_t *tmp_list;
+
+	memset(&job_env, 0, sizeof(job_env));
+
+	tmp_list = gres_g_prep_build_env(step->job_gres_list, step->node_list);
+	gres_g_prep_set_env(&job_env.gres_job_env, tmp_list, step->nodeid);
+	FREE_NULL_LIST(tmp_list);
+
+	job_env.jobid = step->step_id.job_id;
+	job_env.step_id = SLURM_EXTERN_CONT;
+	job_env.node_list = step->node_list;
+	job_env.het_job_id = step->het_job_id;
+	job_env.partition = step->msg->cred->arg->job_partition;
+	job_env.spank_job_env = step->msg->spank_job_env;
+	job_env.spank_job_env_size = step->msg->spank_job_env_size;
+	job_env.work_dir = step->cwd;
+	job_env.uid = step->uid;
+	job_env.gid = step->gid;
+
+	if (!is_epilog)
+		rc = run_prolog(&job_env, step->msg->cred);
+	else
+		rc = run_epilog(&job_env, step->msg->cred);
+
+	if (job_env.gres_job_env) {
+		for (int i = 0; job_env.gres_job_env[i]; i++)
+			xfree(job_env.gres_job_env[i]);
+		xfree(job_env.gres_job_env);
+	}
+
+	if (rc) {
+		int term_sig = 0, exit_status = 0;
+		if (WIFSIGNALED(rc))
+			term_sig = WTERMSIG(rc);
+		else if (WIFEXITED(rc))
+			exit_status = WEXITSTATUS(rc);
+		error("[job %u] %s failed status=%d:%d", step->step_id.job_id,
+		      is_epilog ? "epilog" : "prolog", exit_status, term_sig);
+		rc = is_epilog ? ESLURMD_EPILOG_FAILED : ESLURMD_PROLOG_FAILED;
+	}
+
+	return rc;
+}
+
 static int _spawn_job_container(stepd_step_rec_t *step)
 {
 	jobacctinfo_t *jobacct = NULL;
@@ -1350,7 +1417,11 @@ static int _spawn_job_container(stepd_step_rec_t *step)
 	if (_run_spank_func(SPANK_STEP_TASK_POST_FORK, step, -1, NULL) < 0) {
 		error("spank extern task post-fork failed");
 		rc = SLURM_ERROR;
+	} else if (slurm_conf.prolog_flags & PROLOG_FLAG_RUN_IN_JOB) {
+		rc = _run_prolog_epilog(step, false);
+	}
 
+	if (rc != SLURM_SUCCESS) {
 		/*
 		 * Failure before the tasks have even started, so we will need
 		 * to mark all of them as failed unless there is already an
@@ -1376,6 +1447,12 @@ static int _spawn_job_container(stepd_step_rec_t *step)
 
 	while ((wait4(pid, &status, 0, &rusage) < 0) && (errno == EINTR)) {
 		;	       /* Wait until above process exits from signal */
+	}
+
+	/* Wait for all steps other than extern (this one) to complete */
+	if (!pause_for_job_completion(jobid, MAX(slurm_conf.kill_wait, 5),
+				      true)) {
+		warning("steps did not complete quickly");
 	}
 
 	/* remove all tracked tasks */
@@ -1453,6 +1530,15 @@ fail1:
 		step_complete.step_rc = rc;
 
 	stepd_send_step_complete_msgs(step);
+
+	if (slurm_conf.prolog_flags & PROLOG_FLAG_RUN_IN_JOB) {
+		/* Force all other steps to end before epilog starts */
+		pause_for_job_completion(jobid, 0, true);
+
+		int epilog_rc = _run_prolog_epilog(step, true);
+		epilog_complete(step->step_id.job_id, step->node_list,
+				epilog_rc);
+	}
 
 	return rc;
 }
@@ -1550,7 +1636,7 @@ job_manager(stepd_step_rec_t *step)
 	    (mpi_g_slurmstepd_prefork(step, &step->env) != SLURM_SUCCESS)) {
 		error("Failed mpi_g_slurmstepd_prefork");
 		rc = SLURM_ERROR;
-		goto fail3;
+		goto fail2;
 	}
 
 	if (!step->batch && (step->step_id.step_id != SLURM_INTERACTIVE_STEP) &&
@@ -1581,7 +1667,7 @@ job_manager(stepd_step_rec_t *step)
 	if ((rc = _fork_all_tasks(step, &io_initialized)) < 0) {
 		debug("_fork_all_tasks failed");
 		rc = ESLURMD_EXECVE_FAILED;
-		goto fail3;
+		goto fail2;
 	}
 
 	/*
@@ -1591,7 +1677,7 @@ job_manager(stepd_step_rec_t *step)
 	 * launch to happen.
 	 */
 	if ((rc != SLURM_SUCCESS) || !io_initialized)
-		goto fail3;
+		goto fail2;
 
 	io_close_task_fds(step);
 
@@ -1622,12 +1708,6 @@ job_manager(stepd_step_rec_t *step)
 	acct_gather_profile_endpoll();
 	acct_gather_profile_g_node_step_end();
 	set_job_state(step, SLURMSTEPD_STEP_ENDING);
-
-fail3:
-	if (!step->batch && (step->step_id.step_id != SLURM_INTERACTIVE_STEP) &&
-	    (switch_g_job_fini(step->switch_job) < 0)) {
-		error("switch_g_job_fini: %m");
-	}
 
 fail2:
 	/*
@@ -1938,7 +2018,7 @@ static int exec_wait_kill_child (struct exec_wait_info *e)
  *  Send all children in exec_wait_list SIGKILL.
  *  Returns 0 for success or  < 0 on failure.
  */
-static int exec_wait_kill_children (List exec_wait_list)
+static int exec_wait_kill_children(list_t *exec_wait_list)
 {
 	int rc = 0;
 	int count;
@@ -2000,8 +2080,9 @@ _fork_all_tasks(stepd_step_rec_t *step, bool *io_initialized)
 	int i;
 	struct priv_state sprivs;
 	jobacct_id_t jobacct_id;
-	List exec_wait_list = NULL;
+	list_t *exec_wait_list = NULL;
 	uint32_t node_offset = 0, task_offset = 0;
+	char saved_cwd[PATH_MAX];
 
 	if (step->het_job_node_offset != NO_VAL)
 		node_offset = step->het_job_node_offset;
@@ -2012,6 +2093,11 @@ _fork_all_tasks(stepd_step_rec_t *step, bool *io_initialized)
 	START_TIMER;
 
 	xassert(step != NULL);
+
+	if (!getcwd(saved_cwd, sizeof(saved_cwd))) {
+		error ("Unable to get current working directory: %m");
+		strlcpy(saved_cwd, "/tmp", sizeof(saved_cwd));
+	}
 
 	if (task_g_pre_setuid(step)) {
 		error("Failed to invoke task plugins: one of task_p_pre_setuid functions returned error");
@@ -2244,7 +2330,7 @@ _fork_all_tasks(stepd_step_rec_t *step, bool *io_initialized)
 		/* Don't bother erroring out here */
 	}
 
-	if (chdir(sprivs.saved_cwd) < 0) {
+	if (chdir(saved_cwd) < 0) {
 		error ("Unable to return to working directory");
 	}
 
@@ -2338,7 +2424,7 @@ _fork_all_tasks(stepd_step_rec_t *step, bool *io_initialized)
 	return rc;
 
 fail4:
-	if (chdir (sprivs.saved_cwd) < 0) {
+	if (chdir(saved_cwd) < 0) {
 		error ("Unable to return to working directory");
 	}
 fail3:
@@ -2586,19 +2672,22 @@ _wait_for_all_tasks(stepd_step_rec_t *step)
 
 	for (i = 0; i < tasks_left; ) {
 		int rc;
-		rc = _wait_for_any_task(step, true);
-		if (rc != -1) {
-			i += rc;
-			if (i < tasks_left) {
-				/* To limit the amount of traffic back
-				 * we will sleep a bit to make sure we
-				 * have most if not all the tasks
-				 * completed before we return */
-				usleep(100000);	/* 100 msec */
-				rc = _wait_for_any_task(step, false);
-				if (rc != -1)
-					i += rc;
-			}
+		if ((rc = _wait_for_any_task(step, true)) == -1) {
+			error("%s: No child processes. node_tasks:%u, expected:%d, reaped:%d",
+			      __func__, step->node_tasks, tasks_left, i);
+			break;
+		}
+
+		i += rc;
+		if (i < tasks_left) {
+			/* To limit the amount of traffic back
+			 * we will sleep a bit to make sure we
+			 * have most if not all the tasks
+			 * completed before we return */
+			usleep(100000);	/* 100 msec */
+			rc = _wait_for_any_task(step, false);
+			if (rc != -1)
+				i += rc;
 		}
 
 		if (i < tasks_left) {

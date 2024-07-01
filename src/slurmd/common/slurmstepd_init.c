@@ -62,6 +62,7 @@ extern void pack_slurmd_conf_lite(slurmd_conf_t *conf, buf_t *buffer)
 	pack16(conf->block_map_size, buffer);
 	pack16_array(conf->block_map, conf->block_map_size, buffer);
 	pack16_array(conf->block_map_inv, conf->block_map_size, buffer);
+	packstr(conf->conffile, buffer);
 	packstr(conf->spooldir, buffer);
 	packstr(conf->node_name, buffer);
 	packstr(conf->logfile, buffer);
@@ -100,6 +101,7 @@ extern int unpack_slurmd_conf_lite_no_alloc(slurmd_conf_t *conf, buf_t *buffer)
 		safe_unpack16(&conf->block_map_size, buffer);
 		safe_unpack16_array(&conf->block_map, &uint32_tmp, buffer);
 		safe_unpack16_array(&conf->block_map_inv,  &uint32_tmp, buffer);
+		safe_unpackstr(&conf->conffile, buffer);
 		safe_unpackstr(&conf->spooldir, buffer);
 		safe_unpackstr(&conf->node_name, buffer);
 		safe_unpackstr(&conf->logfile, buffer);
@@ -118,6 +120,7 @@ unpack_error:
 	error("unpack_error in unpack_slurmd_conf_lite_no_alloc: %m");
 	xfree(conf->hostname);
 	xfree(conf->cpu_spec_list);
+	xfree(conf->conffile);
 	xfree(conf->spooldir);
 	xfree(conf->node_name);
 	xfree(conf->logfile);
@@ -135,14 +138,14 @@ extern void pack_slurm_conf_lite(buf_t *buffer)
 {
 	/* last_update */
 	/* accounting_storage_tres */
-	/* accounting_storage_enforce */
+	pack16(slurm_conf.accounting_storage_enforce, buffer);
 	/* accounting_storage_backup_host */
 	/* accounting_storage_ext_host */
 	/* accounting_storage_host */
-	/* accounting_storage_params */
+	packstr(slurm_conf.accounting_storage_params, buffer);
 	/* accounting_storage_pass */
 	/* accounting_storage_port */
-	/* accounting_storage_type */
+	packstr(slurm_conf.accounting_storage_type, buffer);
 	/* accounting_storage_user */
 	/* acct_gather_conf */
 	packstr(slurm_conf.acct_gather_energy_type, buffer);
@@ -227,8 +230,8 @@ extern void pack_slurm_conf_lite(buf_t *buffer)
 	/* max_job_id */
 	/* max_mem_per_cpu */
 	/* max_node_cnt */
-	/* max_step_cnt */
-	/* max_tasks_per_node */
+	pack32(slurm_conf.max_step_cnt, buffer);
+	pack16(slurm_conf.max_tasks_per_node, buffer);
 	/* mcs_plugin */
 	/* mcs_plugin_params */
 	/* min_job_age */
@@ -323,7 +326,13 @@ extern void pack_slurm_conf_lite(buf_t *buffer)
 	/* slurmd_syslog_debug */
 	/* slurmd_timeout */
 	/* srun_epilog */
-	/* srun_port_range */
+	if (slurm_conf.srun_port_range) {
+		pack16(slurm_conf.srun_port_range[0], buffer);
+		pack16(slurm_conf.srun_port_range[1], buffer);
+	} else {
+		pack16(0, buffer);
+		pack16(0, buffer);
+	}
 	/* srun_prolog */
 	/* state_save_location */
 	/* suspend_exc_nodes */
@@ -354,17 +363,19 @@ extern void pack_slurm_conf_lite(buf_t *buffer)
 
 extern int unpack_slurm_conf_lite_no_alloc(buf_t *buffer)
 {
+	uint16_t srun_port_min = 0, srun_port_max = 0;
+
 	init_slurm_conf(&slurm_conf);
 	/* last_update */
 	/* accounting_storage_tres */
-	/* accounting_storage_enforce */
+	safe_unpack16(&slurm_conf.accounting_storage_enforce, buffer);
 	/* accounting_storage_backup_host */
 	/* accounting_storage_ext_host */
 	/* accounting_storage_host */
-	/* accounting_storage_params */
+	safe_unpackstr(&slurm_conf.accounting_storage_params, buffer);
 	/* accounting_storage_pass */
 	/* accounting_storage_port */
-	/* accounting_storage_type */
+	safe_unpackstr(&slurm_conf.accounting_storage_type, buffer);
 	/* accounting_storage_user */
 	/* acct_gather_conf */
 	safe_unpackstr(&slurm_conf.acct_gather_energy_type, buffer);
@@ -452,8 +463,8 @@ extern int unpack_slurm_conf_lite_no_alloc(buf_t *buffer)
 	/* max_job_id */
 	/* max_mem_per_cpu */
 	/* max_node_cnt */
-	/* max_step_cnt */
-	/* max_tasks_per_node */
+	safe_unpack32(&slurm_conf.max_step_cnt, buffer);
+	safe_unpack16(&slurm_conf.max_tasks_per_node, buffer);
 	/* mcs_plugin */
 	/* mcs_plugin_params */
 	/* min_job_age */
@@ -549,7 +560,13 @@ extern int unpack_slurm_conf_lite_no_alloc(buf_t *buffer)
 	/* slurmd_syslog_debug */
 	/* slurmd_timeout */
 	/* srun_epilog */
-	/* srun_port_range */
+	safe_unpack16(&srun_port_min, buffer);
+	safe_unpack16(&srun_port_max, buffer);
+	if (srun_port_max) {
+		slurm_conf.srun_port_range = xcalloc(2, sizeof(uint16_t));
+		slurm_conf.srun_port_range[0] = srun_port_min;
+		slurm_conf.srun_port_range[1] = srun_port_max;
+	}
 	/* srun_prolog */
 	/* state_save_location */
 	/* suspend_exc_nodes */

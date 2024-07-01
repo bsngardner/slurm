@@ -62,7 +62,7 @@
 #include "src/common/proc_args.h"
 #include "src/interfaces/mpi.h"
 #include "src/common/slurm_protocol_api.h"
-#include "src/common/slurm_protocol_interface.h"
+#include "src/common/slurm_protocol_socket.h"
 #include "src/common/slurm_rlimits_info.h"
 #include "src/common/slurm_resource_info.h"
 #include "src/interfaces/acct_gather_profile.h"
@@ -785,6 +785,9 @@ static void _opt_args(int argc, char **argv, int het_job_offset)
 		setenvf(NULL, "SLURM_CONTAINER", "%s", opt.container);
 	if (opt.container_id && !getenv("SLURM_CONTAINER_ID"))
 		setenvf(NULL, "SLURM_CONTAINER_ID", "%s", opt.container_id);
+
+	if (opt.network)
+		setenvf(NULL, "SLURM_NETWORK", "%s", opt.network);
 
 	if (opt.dependency)
 		setenvfs("SLURM_JOB_DEPENDENCY=%s", opt.dependency);

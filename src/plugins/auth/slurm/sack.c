@@ -44,14 +44,15 @@
 #include "slurm/slurm_errno.h"
 #include "src/common/slurm_xlator.h"
 
-#include "src/common/conmgr.h"
 #include "src/common/fd.h"
 #include "src/common/log.h"
+#include "src/common/read_config.h"
 #include "src/common/sack_api.h"
 #include "src/common/slurm_protocol_api.h"
-#include "src/common/read_config.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+
+#include "src/conmgr/conmgr.h"
 
 #include "src/interfaces/auth.h"
 #include "src/interfaces/serializer.h"
@@ -270,7 +271,7 @@ extern void init_sack_conmgr(void)
 		_prepare_run_dir("slurm");
 	}
 
-	init_conmgr(0, 0, callbacks);
+	conmgr_init(0, 0, callbacks);
 
 	if ((fd = socket(AF_UNIX, (SOCK_STREAM | SOCK_CLOEXEC), 0)) < 0)
 		fatal("%s: socket() failed: %m", __func__);
@@ -310,5 +311,5 @@ extern void fini_sack_conmgr(void)
 	 * would prevent the current owner from responding.
 	 */
 
-	free_conmgr();
+	conmgr_fini();
 }

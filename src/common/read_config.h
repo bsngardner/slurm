@@ -101,6 +101,8 @@ typedef struct node_record node_record_t;
 #define DEFAULT_ALLOW_SPEC_RESOURCE_USAGE 0
 #define DEFAULT_HASH_PLUGIN "hash/k12"
 #define DEFAULT_KEEPALIVE_TIME (NO_VAL)
+#define DEFAULT_KEEPALIVE_INTERVAL (NO_VAL)
+#define DEFAULT_KEEPALIVE_PROBES (NO_VAL)
 #define DEFAULT_KILL_ON_BAD_EXIT    0
 #define DEFAULT_KILL_TREE           0
 #define DEFAULT_KILL_WAIT           30
@@ -203,6 +205,8 @@ typedef struct slurm_conf_node {
 	uint64_t real_memory;	/* MB real memory on the node */
 	uint64_t mem_spec_limit; /* MB real memory for memory specialization */
 	char *reason;
+	uint16_t res_cores_per_gpu; /* number of cores per GPU to allow
+				     * to only GPU jobs */
 	char *state;
 	uint32_t tmp_disk;	/* MB total storage in TMP_FS file system */
 	char *tres_weights_str;	/* per TRES billing weight string */
@@ -235,6 +239,7 @@ typedef struct slurm_conf_partition {
 	uint8_t disable_root_jobs; /* if set then user root can't run jobs
 				    * if NO_VAL8, use global default */
 	bool exclusive_user; /* true if node allocations by user */
+	bool exclusive_topo; /* true if exclusive topology*/
 	uint32_t grace_time;	/* default grace time for partition */
 	bool     hidden_flag;	/* 1 if hidden by default */
 	List job_defaults_list;	/* List of job_defaults_t elements */
@@ -292,17 +297,6 @@ typedef struct {
 	char *name;
 	List key_pairs;
 } config_plugin_params_t;
-
-/*
- * Get result of configuration file test.
- * RET SLURM_SUCCESS or error code
- */
-extern int config_test_result(void);
-
-/*
- * Start configuration file test mode. Disables fatal errors.
- */
-extern void config_test_start(void);
 
 /* Destroy a front_end record built by slurm_conf_frontend_array() */
 extern void destroy_frontend(void *ptr);

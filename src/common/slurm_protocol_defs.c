@@ -48,21 +48,24 @@
 #include "src/common/cron.h"
 #include "src/common/forward.h"
 #include "src/common/job_options.h"
+#include "src/common/job_record.h"
 #include "src/common/log.h"
 #include "src/common/parse_time.h"
-#include "src/interfaces/select.h"
+#include "src/common/slurm_protocol_defs.h"
+#include "src/common/slurm_time.h"
+#include "src/common/slurmdbd_defs.h"
+#include "src/common/uid.h"
+#include "src/common/xmalloc.h"
+#include "src/common/xstring.h"
+
 #include "src/interfaces/accounting_storage.h"
 #include "src/interfaces/acct_gather_energy.h"
 #include "src/interfaces/auth.h"
 #include "src/interfaces/cred.h"
 #include "src/interfaces/jobacct_gather.h"
-#include "src/interfaces/topology.h"
-#include "src/common/slurm_protocol_defs.h"
-#include "src/common/slurm_time.h"
+#include "src/interfaces/select.h"
 #include "src/interfaces/switch.h"
-#include "src/common/uid.h"
-#include "src/common/xmalloc.h"
-#include "src/common/xstring.h"
+#include "src/interfaces/topology.h"
 
 /*
 ** Define slurm-specific aliases for use by plugins, see slurm_xlator.h
@@ -86,6 +89,19 @@ strong_alias(accounting_enforce_string, slurm_accounting_enforce_string);
 strong_alias(reservation_flags_string, slurm_reservation_flags_string);
 strong_alias(print_multi_line_string, slurm_print_multi_line_string);
 
+#ifndef NDEBUG
+/*
+ * Used alongside the testsuite to signal that the RPC should be processed
+ * as an untrusted user, rather than the "real" account. (Which in a lot of
+ * testing is likely SlurmUser, and thus allowed to bypass many security
+ * checks.
+ *
+ * Implemented with a thread-local variable to apply only to the current
+ * RPC handling thread. Set by SLURM_DROP_PRIV bit in the slurm_msg_t flags.
+ */
+__thread bool drop_priv = false;
+#endif
+
 typedef struct {
 	uint32_t flag;
 	const char *str;
@@ -102,6 +118,7 @@ static const node_state_flags_t node_states[] = {
 };
 
 static const node_state_flags_t node_state_flags[] = {
+	{ NODE_STATE_BLOCKED, "BLOCKED" },
 	{ NODE_STATE_CLOUD, "CLOUD" },
 	{ NODE_STATE_COMPLETING, "COMPLETING" },
 	{ NODE_STATE_DRAIN, "DRAIN" },
@@ -731,6 +748,84 @@ extern int slurm_sort_char_list_desc(void *v1, void *v2)
 	return 0;
 }
 
+extern int slurm_sort_uint_list_asc(const void *v1, const void *v2)
+{
+	uint64_t uint64a = *(uint64_t *) v1;
+	uint64_t uint64b = *(uint64_t *) v2;
+
+	if (uint64a < uint64b)
+		return -1;
+	else if (uint64a > uint64b)
+		return 1;
+
+	return 0;
+}
+
+extern int slurm_sort_uint_list_desc(const void *v1, const void *v2)
+{
+	uint64_t uint64a = *(uint64_t *) v1;
+	uint64_t uint64b = *(uint64_t *) v2;
+
+	if (uint64a > uint64b)
+		return -1;
+	else if (uint64a < uint64b)
+		return 1;
+
+	return 0;
+}
+
+extern int slurm_sort_int_list_asc(const void *v1, const void *v2)
+{
+	int inta = *(int *) v1;
+	int intb = *(int *) v2;
+
+	if (inta < intb)
+		return -1;
+	else if (inta > intb)
+		return 1;
+
+	return 0;
+}
+
+extern int slurm_sort_int_list_desc(const void *v1, const void *v2)
+{
+	int inta = *(int *) v1;
+	int intb = *(int *) v2;
+
+	if (inta > intb)
+		return -1;
+	else if (inta < intb)
+		return 1;
+
+	return 0;
+}
+
+extern int slurm_sort_int64_list_asc(const void *v1, const void *v2)
+{
+	int64_t int64a = *(int64_t *) v1;
+	int64_t int64b = *(int64_t *) v2;
+
+	if (int64a < int64b)
+		return -1;
+	else if (int64a > int64b)
+		return 1;
+
+	return 0;
+}
+
+extern int slurm_sort_int64_list_desc(const void *v1, const void *v2)
+{
+	int64_t int64a = *(int64_t *) v1;
+	int64_t int64b = *(int64_t *) v2;
+
+	if (int64a > int64b)
+		return -1;
+	else if (int64a < int64b)
+		return 1;
+
+	return 0;
+}
+
 extern char **slurm_char_array_copy(int n, char **src)
 {
 	char **dst = xcalloc(n + 1, sizeof(char *));
@@ -756,7 +851,93 @@ extern char *slurm_sort_node_list_str(char *node_list)
 	return sorted_node_list;
 }
 
-extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id)
+extern bool slurm_parse_array_tok(char *tok, bitstr_t *array_bitmap,
+				  uint32_t max)
+{
+	char *end_ptr = NULL;
+	long int i, first, last, step = 1;
+
+	if (tok[0] == '[')	/* Strip leading "[" */
+		tok++;
+	first = strtol(tok, &end_ptr, 10);
+	if (end_ptr[0] == ']')	/* Strip trailing "]" */
+		end_ptr++;
+	if (first < 0)
+		return false;
+	if (end_ptr[0] == '-') {
+		last = strtol(end_ptr + 1, &end_ptr, 10);
+		if (end_ptr[0] == ']')	/* Strip trailing "]" */
+			end_ptr++;
+		if (end_ptr[0] == ':') {
+			step = strtol(end_ptr + 1, &end_ptr, 10);
+			if (end_ptr[0] == ']')	/* Strip trailing "]" */
+				end_ptr++;
+			if ((end_ptr[0] != '\0') && (end_ptr[0] != '%'))
+				return false;
+			if ((step <= 0) || (step >= max))
+				return false;
+		} else if ((end_ptr[0] != '\0') && (end_ptr[0] != '%')) {
+			return false;
+		}
+		if (last < first)
+			return false;
+	} else if ((end_ptr[0] != '\0') && (end_ptr[0] != '%')) {
+		return false;
+	} else {
+		last = first;
+	}
+
+	if (last >= max)
+		return false;
+
+	for (i = first; i <= last; i += step) {
+		bit_set(array_bitmap, i);
+	}
+
+	return true;
+}
+
+extern bitstr_t *slurm_array_str2bitmap(char *str, uint32_t max_array_size,
+					int32_t *i_last_p)
+{
+	bitstr_t *array_bitmap;
+	char *tmp, *tok;
+	bool valid = true;
+	int32_t i_last = -1;
+
+	xassert(max_array_size != NO_VAL);
+
+	array_bitmap = bit_alloc(max_array_size);
+	if (!array_bitmap)
+		return NULL;
+
+	tmp = xstrdup(str);
+	tok = strtok_r(tmp, ",", &str);
+	while (tok && valid) {
+		valid = slurm_parse_array_tok(tok, array_bitmap,
+					      max_array_size);
+		tok = strtok_r(NULL, ",", &str);
+	}
+	xfree(tmp);
+
+	if (!valid) {
+		FREE_NULL_BITMAP(array_bitmap);
+		return NULL;
+	}
+	i_last = bit_fls(array_bitmap);
+	if (i_last < 0) {
+		FREE_NULL_BITMAP(array_bitmap);
+		return NULL;
+	}
+
+	if (i_last_p)
+		*i_last_p = i_last;
+
+	return array_bitmap;
+}
+
+extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id,
+			       uint32_t max_array_size)
 {
 	char *end_ptr = NULL, *step_end_ptr = NULL, *step_het_end_ptr = NULL;
 	long job, step, step_het;
@@ -766,6 +947,7 @@ extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id)
 	 */
 
 	/* reset to default of NO_VAL */
+	id->array_bitmap = NULL;
 	id->array_task_id = NO_VAL;
 	id->het_job_offset = NO_VAL;
 	id->step_id.job_id = NO_VAL;
@@ -790,7 +972,24 @@ extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id)
 
 	id->step_id.job_id = job;
 
-	if (*end_ptr == '_') {
+	if ((*end_ptr == '_') && (*(end_ptr + 1) == '[')) {
+		char *close_bracket;
+		bitstr_t *array_bitmap;
+
+		if (!max_array_size || (max_array_size == NO_VAL))
+			return ESLURM_INVALID_JOB_ID_NON_NUMERIC;
+
+		close_bracket = xstrchr(end_ptr + 2, ']');
+		if (!close_bracket || (close_bracket[1] != '\0'))
+			return ESLURM_INVALID_JOB_ARRAY_ID_NON_NUMERIC;
+
+		array_bitmap = slurm_array_str2bitmap(end_ptr + 1,
+						      max_array_size, NULL);
+		if (!array_bitmap)
+			return ESLURM_INVALID_JOB_ARRAY_ID_NON_NUMERIC;
+		id->array_bitmap = array_bitmap;
+		end_ptr = close_bracket + 1;
+	} else if (*end_ptr == '_') {
 		char *array_end_ptr = NULL;
 		long array;
 
@@ -933,6 +1132,15 @@ extern int fmt_job_id_string(slurm_selected_step_t *id, char **dst)
 	if ((id->array_task_id != NO_VAL) && (id->het_job_offset != NO_VAL)) {
 		rc = ESLURM_INVALID_HET_JOB_AND_ARRAY;
 		goto cleanup;
+	}
+
+	if (id->array_bitmap && (bit_ffs(id->array_bitmap) != -1)) {
+		char *bitmap_str = bit_fmt_full(id->array_bitmap);
+
+		xstrfmtcatat(str, &pos, "_[%s]", bitmap_str);
+		xfree(bitmap_str);
+		*dst = str;
+		return SLURM_SUCCESS;
 	}
 
 	if (id->array_task_id != NO_VAL)
@@ -1140,6 +1348,7 @@ extern void slurm_free_return_code_msg(return_code_msg_t * msg)
 extern void slurm_free_reroute_msg(reroute_msg_t *msg)
 {
 	if (msg) {
+		xfree(msg->stepmgr);
 		slurmdb_destroy_cluster_rec(msg->working_cluster_rec);
 		xfree(msg);
 	}
@@ -1253,6 +1462,11 @@ extern const char *slurm_container_status_to_str(
 extern void slurm_destroy_selected_step(void *object)
 {
 	slurm_selected_step_t *step = (slurm_selected_step_t *)object;
+
+	if (!step)
+		return;
+
+	FREE_NULL_BITMAP(step->array_bitmap);
 	xfree(step);
 }
 
@@ -1514,6 +1728,15 @@ extern void slurm_free_prolog_launch_msg(prolog_launch_msg_t * msg)
 			xfree(msg->spank_job_env);
 		}
 		slurm_cred_destroy(msg->cred);
+
+		/* stepmgr variables */
+		job_record_delete(msg->job_ptr);
+		part_record_delete(msg->part_ptr);
+		FREE_NULL_LIST(msg->job_node_array);
+
+		FREE_NULL_BUFFER(msg->job_ptr_buf);
+		FREE_NULL_BUFFER(msg->job_node_array_buf);
+		FREE_NULL_BUFFER(msg->part_ptr_buf);
 
 		xfree(msg);
 	}
@@ -1947,8 +2170,8 @@ extern void slurm_free_launch_tasks_request_msg(launch_tasks_request_msg_t * msg
 	xfree(msg->task_epilog);
 	xfree(msg->complete_nodelist);
 
-	if (msg->switch_job)
-		switch_g_free_jobinfo(msg->switch_job);
+	if (msg->switch_step)
+		switch_g_free_stepinfo(msg->switch_step);
 
 	FREE_NULL_LIST(msg->options);
 
@@ -1961,6 +2184,11 @@ extern void slurm_free_launch_tasks_request_msg(launch_tasks_request_msg_t * msg
 	xfree(msg->x11_alloc_host);
 	xfree(msg->x11_magic_cookie);
 	xfree(msg->x11_target);
+
+	xfree(msg->stepmgr);
+	job_record_delete(msg->job_ptr);
+	part_record_delete(msg->part_ptr);
+	FREE_NULL_LIST(msg->job_node_array);
 
 	xfree(msg);
 }
@@ -2111,6 +2339,10 @@ extern void slurm_free_stats_response_msg(stats_info_response_msg_t *msg)
 		xfree(msg->rpc_type_id);
 		xfree(msg->rpc_type_cnt);
 		xfree(msg->rpc_type_time);
+		xfree(msg->rpc_type_queued);
+		xfree(msg->rpc_type_dropped);
+		xfree(msg->rpc_type_cycle_last);
+		xfree(msg->rpc_type_cycle_max);
 		xfree(msg->rpc_user_id);
 		xfree(msg->rpc_user_cnt);
 		xfree(msg->rpc_user_time);
@@ -2387,6 +2619,8 @@ extern char *job_share_string(uint16_t shared)
 		return "USER";
 	else if (shared == JOB_SHARED_MCS)
 		return "MCS";
+	else if (shared == JOB_SHARED_TOPO)
+		return "TOPO";
 	else
 		return "OK";
 }
@@ -2903,6 +3137,16 @@ extern char *reservation_flags_string(reserve_info_t * resv_ptr)
 			xstrcat(flag_str, ",");
 		xstrcat(flag_str, "NO_MAGNETIC");
 	}
+	if (flags & RESERVE_FLAG_USER_DEL) {
+		if (flag_str[0])
+			xstrcat(flag_str, ",");
+		xstrcat(flag_str, "USER_DELETE");
+	}
+	if (flags & RESERVE_FLAG_NO_USER_DEL) {
+		if (flag_str[0])
+			xstrcat(flag_str, ",");
+		xstrcat(flag_str, "NO_USER_DELETE");
+	}
 
 
 	return flag_str;
@@ -3145,6 +3389,7 @@ extern uint32_t parse_node_state_flag(char *flag_str)
 extern char *node_state_string(uint32_t inx)
 {
 	int  base            = (inx & NODE_STATE_BASE);
+	bool blocked_flag = (inx & NODE_STATE_BLOCKED);
 	bool comp_flag       = (inx & NODE_STATE_COMPLETING);
 	bool drain_flag      = (inx & NODE_STATE_DRAIN);
 	bool fail_flag       = (inx & NODE_STATE_FAIL);
@@ -3333,6 +3578,8 @@ extern char *node_state_string(uint32_t inx)
 			return "IDLE*";
 		if (res_flag)
 			return "RESERVED";
+		if (blocked_flag)
+			return "BLOCKED";
 		if (planned_flag)
 			return "PLANNED";
 		return "IDLE";
@@ -3389,6 +3636,7 @@ extern char *node_state_string(uint32_t inx)
 
 extern char *node_state_string_compact(uint32_t inx)
 {
+	bool blocked_flag = (inx & NODE_STATE_BLOCKED);
 	bool comp_flag       = (inx & NODE_STATE_COMPLETING);
 	bool drain_flag      = (inx & NODE_STATE_DRAIN);
 	bool fail_flag       = (inx & NODE_STATE_FAIL);
@@ -3578,6 +3826,8 @@ extern char *node_state_string_compact(uint32_t inx)
 			return "IDLE*";
 		if (res_flag)
 			return "RESV";
+		if (blocked_flag)
+			return "BLOCK";
 		if (planned_flag)
 			return "PLND";
 		return "IDLE";
@@ -3801,12 +4051,13 @@ extern void slurm_free_job_step_create_response_msg(
 {
 	if (msg) {
 		xfree(msg->resv_ports);
+		xfree(msg->stepmgr);
 		slurm_step_layout_destroy(msg->step_layout);
 		slurm_cred_destroy(msg->cred);
 		if (msg->select_jobinfo)
 			select_g_select_jobinfo_free(msg->select_jobinfo);
-		if (msg->switch_job)
-			switch_g_free_jobinfo(msg->switch_job);
+		if (msg->switch_step)
+			switch_g_free_stepinfo(msg->switch_step);
 
 		xfree(msg);
 	}
@@ -4877,6 +5128,7 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 		slurm_free_front_end_info_msg(data);
 		break;
 	case REQUEST_PERSIST_INIT:
+	case REQUEST_PERSIST_INIT_TLS:
 		slurm_persist_free_init_req_msg(data);
 		break;
 	case PERSIST_RC:
@@ -5001,6 +5253,10 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 	case REQUEST_SET_SUSPEND_EXC_STATES:
 		slurm_free_suspend_exc_update_msg(data);
 		break;
+	case REQUEST_DBD_RELAY:
+		slurmdbd_free_msg(data);
+		xfree(data);
+		break;
 	case RESPONSE_CONTROL_STATUS:
 		slurm_free_control_status_msg(data);
 		break;
@@ -5084,8 +5340,8 @@ extern uint32_t slurm_get_return_code(slurm_msg_type_t type, void *data)
 		rc = SLURM_COMMUNICATIONS_CONNECTION_ERROR;
 		break;
 	default:
-		xassert(false);
 		error("don't know the rc for type %u returning %u", type, rc);
+		xassert(false);
 		break;
 	}
 	return rc;
@@ -5962,4 +6218,150 @@ char *bf_exit2string(uint16_t opcode)
 	default:
 		return "unknown";
 	}
+}
+
+/* Set r_uid of agent_arg */
+extern void set_agent_arg_r_uid(agent_arg_t *agent_arg_ptr, uid_t r_uid)
+{
+	agent_arg_ptr->r_uid = r_uid;
+	agent_arg_ptr->r_uid_set = true;
+}
+
+extern void purge_agent_args(agent_arg_t *agent_arg_ptr)
+{
+	if (agent_arg_ptr == NULL)
+		return;
+
+	hostlist_destroy(agent_arg_ptr->hostlist);
+	xfree(agent_arg_ptr->addr);
+	if (agent_arg_ptr->msg_args) {
+		if (agent_arg_ptr->msg_type == REQUEST_BATCH_JOB_LAUNCH) {
+			slurm_free_job_launch_msg(agent_arg_ptr->msg_args);
+		} else if (agent_arg_ptr->msg_type ==
+				RESPONSE_RESOURCE_ALLOCATION) {
+			resource_allocation_response_msg_t *alloc_msg =
+				agent_arg_ptr->msg_args;
+			/* NULL out working_cluster_rec because it's pointing to
+			 * the actual cluster_rec. */
+			alloc_msg->working_cluster_rec = NULL;
+			slurm_free_resource_allocation_response_msg(
+					agent_arg_ptr->msg_args);
+		} else if (agent_arg_ptr->msg_type ==
+				RESPONSE_HET_JOB_ALLOCATION) {
+			List alloc_list = agent_arg_ptr->msg_args;
+			FREE_NULL_LIST(alloc_list);
+		} else if ((agent_arg_ptr->msg_type == REQUEST_ABORT_JOB)    ||
+			 (agent_arg_ptr->msg_type == REQUEST_TERMINATE_JOB)  ||
+			 (agent_arg_ptr->msg_type == REQUEST_KILL_PREEMPTED) ||
+			 (agent_arg_ptr->msg_type == REQUEST_KILL_TIMELIMIT))
+			slurm_free_kill_job_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == SRUN_USER_MSG)
+			slurm_free_srun_user_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == SRUN_NODE_FAIL)
+			slurm_free_srun_node_fail_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == SRUN_STEP_MISSING)
+			slurm_free_srun_step_missing_msg(
+				agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == SRUN_STEP_SIGNAL)
+			slurm_free_job_step_kill_msg(
+				agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_JOB_NOTIFY)
+			slurm_free_job_notify_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_SUSPEND_INT)
+			slurm_free_suspend_int_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_LAUNCH_PROLOG)
+			slurm_free_prolog_launch_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_REBOOT_NODES)
+			slurm_free_reboot_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_RECONFIGURE_SACKD)
+			slurm_free_config_response_msg(agent_arg_ptr->msg_args);
+		else if (agent_arg_ptr->msg_type == REQUEST_RECONFIGURE_WITH_CONFIG)
+			slurm_free_config_response_msg(agent_arg_ptr->msg_args);
+		else
+			xfree(agent_arg_ptr->msg_args);
+	}
+	xfree(agent_arg_ptr);
+}
+
+/*
+ * validate_slurm_user - validate that the uid is authorized to see
+ *      privileged data (either user root or SlurmUser)
+ * IN uid - user to validate
+ * RET true if permitted to run, false otherwise
+ */
+extern bool validate_slurm_user(uid_t uid)
+{
+#ifndef NDEBUG
+	if (drop_priv)
+		return false;
+#endif
+	if ((uid == 0) || (uid == slurm_conf.slurm_user_id))
+		return true;
+	else
+		return false;
+}
+
+/*
+ * validate_slurmd_user - validate that the uid is authorized to see
+ *      privileged data (either user root or SlurmdUser)
+ * IN uid - user to validate
+ * RET true if permitted to run, false otherwise
+ */
+extern bool validate_slurmd_user(uid_t uid)
+{
+#ifndef NDEBUG
+	if (drop_priv)
+		return false;
+#endif
+	if ((uid == 0) || (uid == slurm_conf.slurmd_user_id))
+		return true;
+	else
+		return false;
+}
+
+extern uint16_t get_job_share_value(job_record_t *job_ptr)
+{
+	uint16_t shared = 0;
+	job_details_t *detail_ptr = job_ptr->details;
+
+	if (!detail_ptr)
+		shared = NO_VAL16;
+	else if (detail_ptr->share_res == 1)	/* User --share */
+		shared = JOB_SHARED_OK;
+	else if ((detail_ptr->share_res == 0) ||
+		 (detail_ptr->whole_node & WHOLE_NODE_REQUIRED))
+		shared = JOB_SHARED_NONE;	/* User --exclusive */
+	else if (detail_ptr->whole_node & WHOLE_NODE_USER)
+		shared = JOB_SHARED_USER;	/* User --exclusive=user */
+	else if (detail_ptr->whole_node & WHOLE_NODE_MCS)
+		shared = JOB_SHARED_MCS;	/* User --exclusive=mcs */
+	else if (detail_ptr->whole_node & WHOLE_TOPO)
+		shared = JOB_SHARED_TOPO;	/* User --exclusive=topo */
+	else if (job_ptr->part_ptr) {
+		/* Report shared status based upon latest partition info */
+		if (job_ptr->part_ptr->flags & PART_FLAG_EXCLUSIVE_TOPO)
+			shared = JOB_SHARED_TOPO;
+		else if (job_ptr->part_ptr->flags & PART_FLAG_EXCLUSIVE_USER)
+			shared = JOB_SHARED_USER;
+		else if ((job_ptr->part_ptr->max_share & SHARED_FORCE) &&
+			 ((job_ptr->part_ptr->max_share & (~SHARED_FORCE)) > 1))
+			shared = 1; /* Partition OverSubscribe=force */
+		else if (job_ptr->part_ptr->max_share == 0)
+			/* Partition OverSubscribe=exclusive */
+			shared = JOB_SHARED_NONE;
+		else
+			shared = NO_VAL16;  /* Part OverSubscribe=yes or no */
+	} else
+		shared = NO_VAL16;	/* No user or partition info */
+
+	return shared;
+}
+
+extern void slurm_free_stepmgr_job_info(stepmgr_job_info_t *object)
+{
+	if (!object)
+		return;
+
+	xfree(object->stepmgr);
+	xfree(object);
 }

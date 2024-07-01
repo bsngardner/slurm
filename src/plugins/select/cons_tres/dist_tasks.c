@@ -102,48 +102,12 @@ static void _gen_combs(int *comb_list, int n, int k)
 	xfree(comb);
 }
 
-/* qsort compare function for ascending int list */
-static int _cmp_int_ascend(const void *a, const void *b)
-{
-	int ca = *((int *) a);
-	int cb = *((int *) b);
-
-	if (ca < cb)
-		return -1;
-	else if (ca > cb)
-		return 1;
-
-	return 0;
-}
-
-/* qsort compare function for descending int list */
-static int _cmp_int_descend(const void *a, const void *b)
-{
-	int ca = *((int *) a);
-	int cb = *((int *) b);
-
-	if (ca < cb)
-		return 1;
-	else if (ca > cb)
-		return -1;
-
-	return 0;
-}
-
-
 /* qsort compare function for board combination socket list
  * NOTE: sockets_core_cnt is a global symbol in this module */
 static int _cmp_sock(const void *a, const void *b)
 {
-	int ca = sockets_core_cnt[*((int *) a)];
-	int cb = sockets_core_cnt[*((int *) b)];
-
-	if (ca < cb)
-		return 1;
-	else if (ca > cb)
-		return -1;
-
-	return 0;
+	return slurm_sort_int_list_desc(&sockets_core_cnt[*((int *) a)],
+					&sockets_core_cnt[*((int *) b)]);
 }
 
 /* Enable detailed logging of cr_dist() node and core bitmaps */
@@ -619,7 +583,7 @@ static void _block_sync_core_bitmap(job_record_t *job_ptr,
 
 		/* Sort boards in descending order of available core count */
 		qsort(sort_brds_core_cnt, nboards_nb, sizeof(int),
-		      _cmp_int_descend);
+		      slurm_sort_int_list_desc);
 		/*
 		 * Determine minimum number of boards required for the
 		 * allocation (b_min)
@@ -740,7 +704,7 @@ static void _block_sync_core_bitmap(job_record_t *job_ptr,
 		 * ascending order of socket number
 		 */
 		qsort(&socket_list[comb_min * sock_per_comb], sock_per_comb,
-		      sizeof (int), _cmp_int_ascend);
+		      sizeof (int), slurm_sort_int_list_asc);
 
 		xfree(board_combs);
 		xfree(elig_brd_combs);
@@ -1445,7 +1409,7 @@ extern int dist_tasks(job_record_t *job_ptr, const uint16_t cr_type,
 	}
 
 	if ((job_ptr->job_resrcs->node_req == NODE_CR_RESERVED) ||
-	    (job_ptr->details->whole_node == 1)) {
+	    (job_ptr->details->whole_node & WHOLE_NODE_REQUIRED)) {
 		/*
 		 * The job has been allocated an EXCLUSIVE set of nodes,
 		 * so it gets all of the bits in the core_array except for

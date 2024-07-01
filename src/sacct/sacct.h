@@ -168,6 +168,9 @@ typedef enum {
 		PRINT_RESERVATION_ID,
 		PRINT_START,
 		PRINT_STATE,
+		PRINT_STDERR,
+		PRINT_STDIN,
+		PRINT_STDOUT,
 		PRINT_SUBMIT,
 		PRINT_SUBMIT_LINE,
 		PRINT_SUSPENDED,
@@ -206,6 +209,7 @@ typedef struct {
 	slurmdb_job_cond_t *job_cond;
 	bool opt_array;		/* --array */
 	int opt_completion;	/* --completion */
+	bool expand_patterns;	/* substitute stdin/err/out patterns */
 	bool opt_federation;	/* --federation */
 	char *opt_field_list;	/* --fields= */
 	gid_t opt_gid;		/* running persons gid */

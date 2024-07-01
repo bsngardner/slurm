@@ -55,17 +55,19 @@
 
 #include "slurm/slurm.h"
 #include "slurm/slurmdb.h"
+
 #include "src/common/bitstring.h"
 #include "src/common/list.h"
 #include "src/common/macros.h"
 #include "src/common/msg_type.h"
-#include "src/interfaces/cred.h"
+#include "src/common/persist_conn.h"
+#include "src/common/part_record.h"
 #include "src/common/slurm_protocol_common.h"
-#include "src/common/slurm_persist_conn.h"
 #include "src/common/slurm_step_layout.h"
 #include "src/common/slurmdb_defs.h"
 #include "src/common/working_cluster.h"
 #include "src/common/xassert.h"
+#include "src/interfaces/cred.h"
 
 /*
  * This is what the UID and GID accessors return on error.
@@ -140,6 +142,8 @@
 	((_X->node_state & NODE_STATE_BASE) == NODE_STATE_FUTURE)
 
 /* Derived node states */
+#define IS_NODE_BLOCKED(_X)		\
+	(_X->node_state & NODE_STATE_BLOCKED)
 #define IS_NODE_CLOUD(_X)		\
 	(_X->node_state & NODE_STATE_CLOUD)
 #define IS_NODE_DRAIN(_X)		\
@@ -212,12 +216,13 @@
 #define RESV_FREE_STR_NODES     SLURM_BIT(8)
 #define RESV_FREE_STR_TRES      SLURM_BIT(9)
 
-/* These defines have to be here to avoid circular dependancy with
- * switch.h
- */
-#ifndef __switch_jobinfo_t_defined
-#  define __switch_jobinfo_t_defined
-   typedef struct switch_jobinfo   switch_jobinfo_t;
+#ifndef NDEBUG
+extern __thread bool drop_priv;
+#endif
+
+#ifndef __job_record_t_defined
+#  define __job_record_t_defined
+typedef struct job_record job_record_t;
 #endif
 
 /*****************************************************************************\
@@ -294,12 +299,11 @@ typedef struct slurm_msg {
 				 buffer starts. */
 	buf_t *buffer;		/* DON'T PACK! ptr to buffer that msg was
 				 * unpacked from. */
-	slurm_persist_conn_t *conn; /* DON'T PACK OR FREE! this is here to
-				     * distinguish a persistent connection from
-				     * a normal connection it should be filled
-				     * in with the connection before sending the
-				     * message so that it is handled correctly.
-				     */
+	persist_conn_t *conn;	/* DON'T PACK OR FREE! this is here to
+				 * distinguish a persistent connection from a
+				 * normal connection. It should be filled in
+				 * with the connection before sending the
+				 * message so that it is handled correctly. */
 	int conn_fd; /* Only used when the message isn't on a persistent
 		      * connection. */
 	void *data;
@@ -485,6 +489,7 @@ typedef struct step_complete_msg {
 	slurm_step_id_t step_id;
  	uint32_t step_rc;	/* largest task return code */
 	jobacctinfo_t *jobacct;
+	bool send_to_stepmgr;
 } step_complete_msg_t;
 
 typedef struct signal_tasks_msg {
@@ -594,9 +599,10 @@ typedef struct job_step_create_response_msg {
 	char *resv_ports;		/* reserved ports */
 	slurm_step_layout_t *step_layout; /* information about how the
                                            * step is laid out */
+	char *stepmgr;
 	slurm_cred_t *cred;    	  /* slurm job credential */
 	dynamic_plugin_data_t *select_jobinfo;	/* select opaque data type */
-	dynamic_plugin_data_t *switch_job;	/* switch opaque data type */
+	dynamic_plugin_data_t *switch_step;	/* switch opaque data type */
 	uint16_t use_protocol_ver;   /* Lowest protocol version running on
 				      * the slurmd's in this step.
 				      */
@@ -696,7 +702,7 @@ typedef struct launch_tasks_request_msg {
 
 	uint16_t cred_version;	/* job credential protocol_version */
 	slurm_cred_t *cred;	/* job credential            */
-	dynamic_plugin_data_t *switch_job; /* switch credential for the job */
+	dynamic_plugin_data_t *switch_step; /* switch credential for the job */
 	List options;  /* Arbitrary job options */
 	char *complete_nodelist;
 	char **spank_job_env;
@@ -711,6 +717,13 @@ typedef struct launch_tasks_request_msg {
 	char *x11_magic_cookie;		/* X11 auth cookie to abuse */
 	char *x11_target;		/* X11 target host, or unix socket */
 	uint16_t x11_target_port;	/* X11 target port */
+
+	/* To send to stepmgr */
+	job_record_t *job_ptr;
+	list_t *job_node_array;
+	part_record_t *part_ptr;
+
+	char *stepmgr; /* Hostname of stepmgr */
 } launch_tasks_request_msg_t;
 
 typedef struct partition_info partition_desc_msg_t;
@@ -724,6 +737,7 @@ typedef struct return_code2_msg {
 } return_code2_msg_t;
 
 typedef struct {
+	char *stepmgr;
 	slurmdb_cluster_rec_t *working_cluster_rec;
 } reroute_msg_t;
 
@@ -825,6 +839,17 @@ typedef struct prolog_launch_msg {
 	char *x11_magic_cookie;		/* X11 auth cookie to abuse */
 	char *x11_target;		/* X11 target host, or unix socket */
 	uint16_t x11_target_port;	/* X11 target port */
+
+	/* To send to stepmgr */
+	job_record_t *job_ptr;
+	buf_t *job_ptr_buf;
+
+	list_t *job_node_array; /* node_record_t array of size
+				 * job_ptr->node_cnt for stepmgr. */
+	buf_t *job_node_array_buf;
+
+	part_record_t *part_ptr;
+	buf_t *part_ptr_buf;
 } prolog_launch_msg_t;
 
 typedef struct batch_job_launch_msg {
@@ -1289,6 +1314,14 @@ extern int slurm_find_char_in_list(void *x, void *key);
 extern int slurm_find_ptr_in_list(void *x, void *key);
 extern void slurm_remove_char_list_from_char_list(list_t *haystack,
 						  list_t *needles);
+
+extern int slurm_sort_uint_list_asc(const void *, const void *);
+extern int slurm_sort_uint_list_desc(const void *, const void *);
+extern int slurm_sort_int_list_asc(const void *, const void *);
+extern int slurm_sort_int_list_desc(const void *, const void *);
+extern int slurm_sort_int64_list_asc(const void *, const void *);
+extern int slurm_sort_int64_list_desc(const void *, const void *);
+
 extern int slurm_sort_char_list_asc(void *, void *);
 extern int slurm_sort_char_list_desc(void *, void *);
 
@@ -1301,6 +1334,31 @@ extern char **slurm_char_array_copy(int n, char **src);
  * Caller must xfree() return value.
  */
 extern char *slurm_sort_node_list_str(char *node_list);
+
+/*
+ * For each token in a comma delimited job array expression set the matching
+ * bitmap entry.
+ *
+ * IN tok - An array expression. For example: "[1,3-5,8]"
+ * IN array_bitmap - Matching entries in tok are set in this bitmap.
+ * IN max - maximum size of the job array.
+ * RET true if tok is a valid array expression, v
+ */
+extern bool slurm_parse_array_tok(char *tok, bitstr_t *array_bitmap,
+				  uint32_t max);
+/*
+ * Take a string representation of an array range or comma separated values
+ * and translate that into a bitmap.
+ *
+ * IN str - An array expression. For example: "[1,3-5,8]"
+ * IN max_array_size - maximum size of the job array.
+ * OUT i_last_p - (optional) if not NULL, set the value pointed to by i_last_p
+ *                to the last bit set in the array bitmap. This is only changed
+ *                if the string was successfully parsed.
+ * RET array_bitmap if successfull, NULL otherwise.
+ */
+extern bitstr_t *slurm_array_str2bitmap(char *str, uint32_t max_array_size,
+					int32_t *i_last_p);
 
 /*
  * Take a string identifing any part of a job and parses it into an id
@@ -1322,9 +1380,12 @@ extern char *slurm_sort_node_list_str(char *node_list);
  * IN/OUT id - ptr to id to be populated.
  * 	All values are always set to NO_VAL and then populated as parsed.
  *      (Errors during parsing may result in partially populated ID.)
+ * IN max_array_size - Maximum size of a job array. May be 0 or NO_VAL if
+ *                     job array expressions are not expected.
  * RET SLURM_SUCCESS or error
  */
-extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id);
+extern int unfmt_job_id_string(const char *src, slurm_selected_step_t *id,
+			       uint32_t max_array_size);
 /*
  * Dump id into string identifing a part of a job.
  * Dumps same formats as unfmt_job_id_string() parsed.
@@ -1756,6 +1817,60 @@ extern char *schedule_exit2string(uint16_t opcode);
 
 extern char *bf_exit2string(uint16_t opcode);
 
+/*
+ * Parse reservation request option Watts
+ * IN watts_str - value to parse
+ * IN/OUT resv_msg_ptr - msg where resv_watts member is modified
+ * OUT err_msg - set to an explanation of failure, if any. Don't set if NULL
+ */
+extern uint32_t slurm_watts_str_to_int(char *watts_str, char **err_msg);
+
+typedef struct {
+	uint32_t	node_count;	/* number of nodes to communicate
+					 * with */
+	uint16_t	retry;		/* if set, keep trying */
+	uid_t r_uid;			/* receiver UID */
+	bool r_uid_set;			/* true if receiver UID set */
+	slurm_addr_t    *addr;          /* if set will send to this
+					   addr not hostlist */
+	hostlist_t *hostlist;		/* hostlist containing the
+					 * nodes we are sending to */
+	uint16_t        protocol_version; /* protocol version to use */
+	slurm_msg_type_t msg_type;	/* RPC to be issued */
+	void		*msg_args;	/* RPC data to be transmitted */
+	uint16_t msg_flags;		/* Flags to be added to msg */
+} agent_arg_t;
+
+/* Set r_uid of agent_arg */
+extern void set_agent_arg_r_uid(agent_arg_t *agent_arg_ptr, uid_t r_uid);
+extern void purge_agent_args(agent_arg_t *agent_arg_ptr);
+
+/*
+ * validate_slurm_user - validate that the uid is authorized to see
+ *      privileged data (either user root or SlurmUser)
+ * IN uid - user to validate
+ * RET true if permitted to run, false otherwise
+ */
+extern bool validate_slurm_user(uid_t uid);
+
+/*
+ * validate_slurmd_user - validate that the uid is authorized to see
+ *      privileged data (either user root or SlurmUser)
+ * IN uid - user to validate
+ * RET true if permitted to run, false otherwise
+ */
+extern bool validate_slurmd_user(uid_t uid);
+
+/*
+ * Return the job's sharing value from job or partition value.
+ */
+extern uint16_t get_job_share_value(job_record_t *job_ptr);
+
+/*
+ * Free stepmgr_job_info_t
+ */
+extern void slurm_free_stepmgr_job_info(stepmgr_job_info_t *object);
+
 #define safe_read(fd, buf, size) do {					\
 		int remaining = size;					\
 		char *ptr = (char *) buf;				\
@@ -1765,11 +1880,13 @@ extern char *bf_exit2string(uint16_t opcode);
 			if ((rc == 0) && (remaining == size)) {		\
 				debug("%s:%d: %s: safe_read EOF",	\
 				      __FILE__, __LINE__, __func__); \
+				errno = EIO;				\
 				goto rwfail;				\
 			} else if (rc == 0) {				\
 				debug("%s:%d: %s: safe_read (%d of %d) EOF", \
 				      __FILE__, __LINE__, __func__, \
 				      remaining, (int)size);		\
+				errno = EIO;				\
 				goto rwfail;				\
 			} else if (rc < 0) {				\
 				if ((errno == EAGAIN) ||		\

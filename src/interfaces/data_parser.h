@@ -99,6 +99,9 @@ typedef enum {
 	DATA_PARSER_OPENAPI_ACCOUNT_QUERY_PTR, /* openapi_account_query_t* */
 	DATA_PARSER_ACCOUNT_CONDITION, /* slurmdb_account_cond_t */
 	DATA_PARSER_ACCOUNT_CONDITION_PTR, /* slurmdb_account_cond_t* */
+	DATA_PARSER_ACCOUNT_CONDITION_WITH_ASSOC_V40, /* slurmdb_account_cond_t->flags&SLURMDB_ACCT_FLAG_WASSOC - TODO: Remove with v0.0.40 */
+	DATA_PARSER_ACCOUNT_CONDITION_WITH_WCOORD_V40, /* slurmdb_account_cond_t->flags&SLURMDB_ACCT_FLAG_WCOORD - TODO: Remove with v0.0.40 */
+	DATA_PARSER_ACCOUNT_CONDITION_WITH_DELETED_V40, /* slurmdb_account_cond_t->flags&SLURMDB_ACCT_FLAG_DELETED - TODO: Remove with v0.0.40 */
 	DATA_PARSER_ACCOUNT_LIST, /* list of slurmdb_account_rec_t* */
 	DATA_PARSER_ACCOUNT, /* slurmdb_account_rec_t */
 	DATA_PARSER_ACCOUNT_PTR, /* slurmdb_account_rec_t* */
@@ -122,7 +125,7 @@ typedef enum {
 	DATA_PARSER_ASSOC_SHORT_PTR, /* slurmdb_assoc_rec_t* (for id only) */
 	DATA_PARSER_ASSOC, /* slurmdb_assoc_rec_t */
 	DATA_PARSER_ASSOC_PTR, /* slurmdb_assoc_rec_t* */
-	DATA_PARSER_ASSOC_FLAGS, /* slurmdb_assoc_rec_t->flags & ASSOC_FLAG_* */
+	DATA_PARSER_ASSOC_FLAGS, /* slurmdb_assoc_flags_t */
 	DATA_PARSER_ASSOC_USAGE, /* slurmdb_assoc_usage_t */
 	DATA_PARSER_ASSOC_USAGE_PTR, /* slurmdb_assoc_usage_t* */
 	DATA_PARSER_ASSOC_REC_SET, /* slurmdb_assoc_rec_t */
@@ -174,6 +177,9 @@ typedef enum {
 	DATA_PARSER_JOB_CONDITION_DB_FLAGS, /* uint32_t - SLURMDB_JOB_FLAG_* */
 	DATA_PARSER_JOB_CONDITION_SUBMIT_TIME, /* slurmdb_job_cond_t->usage_start&flags */
 	DATA_PARSER_JOB_CONDITION_PTR, /* slurmdb_job_cond_t* */
+	DATA_PARSER_JOB_STDIN, /* slurmdb_job_rec_t->std_in */
+	DATA_PARSER_JOB_STDOUT, /* slurmdb_job_rec_t->std_out */
+	DATA_PARSER_JOB_STDERR, /* slurmdb_job_rec_t->std_err */
 	DATA_PARSER_OPENAPI_SLURMDBD_JOBS_RESP, /* openapi_resp_single_t */
 	DATA_PARSER_OPENAPI_SLURMDBD_JOBS_RESP_PTR, /* openapi_resp_single_t* */
 	DATA_PARSER_OPENAPI_SLURMDBD_JOB_PARAM, /* openapi_job_param_t */
@@ -239,7 +245,6 @@ typedef enum {
 	DATA_PARSER_STATS_USER_PTR, /* slurmdb_rpc_obj_t* */
 	DATA_PARSER_ROLLUP_STATS, /* slurmdb_rollup_stats_t */
 	DATA_PARSER_ROLLUP_STATS_PTR, /* slurmdb_rollup_stats_t* */
-	DATA_PARSER_STEP_CPUFREQ_GOV, /* slurmdb_step_rec_t.req_cpufreq_gov (uint32_t) of CPU_FREQ_* flags */
 	DATA_PARSER_SLURM_STEP_ID, /* slurm_step_id_t */
 	DATA_PARSER_SLURM_STEP_ID_PTR, /* slurm_step_id_t* */
 	DATA_PARSER_SLURM_STEP_ID_STRING, /* slurm_step_id_t -> SELECTED_STEP */
@@ -455,9 +460,14 @@ typedef enum {
 	DATA_PARSER_OPENAPI_JOB_SUBMIT_RESPONSE_PTR, /* job_submit_response_t* */
 	DATA_PARSER_JOB_SUBMIT_REQ, /* job_submit_request_t */
 	DATA_PARSER_JOB_SUBMIT_REQ_PTR, /* job_submit_request_t */
+	DATA_PARSER_OPENAPI_JOB_ALLOC_RESP, /* openapi_job_alloc_response_t */
+	DATA_PARSER_OPENAPI_JOB_ALLOC_RESP_PTR, /* openapi_job_alloc_response_t* */
+	DATA_PARSER_JOB_ALLOC_REQ, /* openapi_job_alloc_request_t */
+	DATA_PARSER_JOB_ALLOC_REQ_PTR, /* openapi_job_alloc_request_t* */
 	DATA_PARSER_JOB_DESC_MSG, /* job_desc_msg_t */
 	DATA_PARSER_JOB_DESC_MSG_ARGV, /* job_desc_msg_t->argv+argc */
 	DATA_PARSER_JOB_DESC_MSG_CPU_FREQ, /* job_desc_msg_t->cpu_freq* */
+	DATA_PARSER_JOB_DESC_MSG_CRON_ENTRY, /* cron_entry_t * */
 	DATA_PARSER_JOB_DESC_MSG_ENV, /* job_desc_msg_t->env* */
 	DATA_PARSER_JOB_DESC_MSG_NODES, /* job_desc_msg_t->min/max_cpus */
 	DATA_PARSER_JOB_DESC_MSG_SPANK_ENV, /* job_desc_msg_t->spank_env* */

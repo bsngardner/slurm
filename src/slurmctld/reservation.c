@@ -76,9 +76,9 @@
 #include "src/interfaces/gres.h"
 #include "src/interfaces/node_features.h"
 #include "src/interfaces/select.h"
+#include "src/interfaces/topology.h"
 
 #include "src/slurmctld/groups.h"
-#include "src/slurmctld/gres_ctld.h"
 #include "src/slurmctld/job_scheduler.h"
 #include "src/slurmctld/licenses.h"
 #include "src/slurmctld/locks.h"
@@ -87,6 +87,9 @@
 #include "src/slurmctld/slurmctld.h"
 #include "src/slurmctld/slurmscriptd.h"
 #include "src/slurmctld/state_save.h"
+
+#include "src/stepmgr/gres_stepmgr.h"
+#include "src/stepmgr/stepmgr.h"
 
 #define RESV_MAGIC	0x3b82
 
@@ -121,8 +124,8 @@ static const char *select_node_bitmap_tags[] = {
 };
 
 time_t    last_resv_update = (time_t) 0;
-List      resv_list = (List) NULL;
-static List magnetic_resv_list = NULL;
+list_t *resv_list = NULL;
+static list_t *magnetic_resv_list = NULL;
 uint32_t  top_suffix = 0;
 
 typedef struct constraint_slot {
@@ -161,7 +164,7 @@ static bool _is_resv_used(slurmctld_resv_t *resv_ptr);
 static bool _job_overlap(time_t start_time, uint64_t flags,
 			 bitstr_t *node_bitmap, char *resv_name);
 static int _job_resv_check(void *x, void *arg);
-static List _list_dup(List license_list);
+static list_t *_list_dup(list_t *license_list);
 static buf_t *_open_resv_state_file(char **state_file);
 static void _pack_resv(slurmctld_resv_t *resv_ptr, buf_t *buffer,
 		       bool internal, uint16_t protocol_version);
@@ -177,7 +180,7 @@ static void _pick_nodes_by_feature_node_cnt(bitstr_t *avail_bitmap,
 					    resv_desc_msg_t *resv_desc_ptr,
 					    resv_select_t *resv_select_ret,
 					    int total_node_cnt,
-					    List feature_list);
+					    list_t *feature_list);
 static bitstr_t *_pick_node_cnt(resv_desc_msg_t *resv_desc_ptr,
 				resv_select_t *resv_select,
 				uint32_t node_cnt);
@@ -215,7 +218,7 @@ static int  _valid_job_access_resv(job_record_t *job_ptr,
 static bool _validate_one_reservation(slurmctld_resv_t *resv_ptr);
 static void _validate_node_choice(slurmctld_resv_t *resv_ptr);
 static bool _validate_user_access(slurmctld_resv_t *resv_ptr,
-				  List user_assoc_list, uid_t uid);
+				  list_t *user_assoc_list, uid_t uid);
 
 static void _free_resv_select_members(resv_select_t *resv_select)
 {
@@ -264,7 +267,7 @@ static int _parse_tres_str(resv_desc_msg_t *resv_desc_ptr)
 	/*
 	 * Here we need to verify all the TRES (including GRES) are real TRES.
 	 */
-	if (!valid_tres_cnt(resv_desc_ptr->tres_str, true))
+	if (!assoc_mgr_valid_tres_cnt(resv_desc_ptr->tres_str, true))
 		return ESLURM_INVALID_TRES;
 
 	/*
@@ -404,11 +407,11 @@ static void _advance_time(time_t *res_time, int day_cnt, int hour_cnt)
 	}
 }
 
-static List _list_dup(List license_list)
+static list_t *_list_dup(list_t *license_list)
 {
 	list_itr_t *iter;
 	licenses_t *license_src, *license_dest;
-	List lic_list = (List) NULL;
+	list_t *lic_list = NULL;
 
 	if (!license_list)
 		return lic_list;
@@ -956,7 +959,7 @@ static bool _is_account_valid(char *account)
  * associations must be set before calling this function and while
  * handling it after a return.
  */
-static int _append_acct_to_assoc_list(List assoc_list,
+static int _append_acct_to_assoc_list(list_t *assoc_list,
 				      slurmdb_assoc_rec_t *assoc)
 {
 	int rc = ESLURM_INVALID_ACCOUNT;
@@ -990,7 +993,8 @@ static int _append_acct_to_assoc_list(List assoc_list,
 static int _set_assoc_list(slurmctld_resv_t *resv_ptr)
 {
 	int rc = SLURM_SUCCESS, i = 0, j = 0;
-	List assoc_list_allow = NULL, assoc_list_deny = NULL, assoc_list;
+	list_t *assoc_list_allow = NULL, *assoc_list_deny = NULL;
+	list_t *assoc_list = NULL;
 	slurmdb_assoc_rec_t assoc, *assoc_ptr = NULL;
 	assoc_mgr_lock_t locks = { .assoc = READ_LOCK, .user = READ_LOCK };
 
@@ -2562,10 +2566,11 @@ static void _set_tres_cnt(slurmctld_resv_t *resv_ptr,
 
 		assoc_mgr_lock(&locks);
 		tres_alloc_cnt = xcalloc(slurmctld_tres_cnt, sizeof(uint64_t));
-		gres_ctld_set_job_tres_cnt(resv_ptr->gres_list_alloc,
-					   resv_ptr->node_cnt,
-					   tres_alloc_cnt,
-					   true);
+		gres_stepmgr_set_job_tres_cnt(
+			resv_ptr->gres_list_alloc,
+			resv_ptr->node_cnt,
+			tres_alloc_cnt,
+			true);
 		resv_ptr->tres_str = assoc_mgr_make_tres_str_from_array(
 			tres_alloc_cnt, TRES_STR_FLAG_SIMPLE, true);
 		xfree(tres_alloc_cnt);
@@ -2642,9 +2647,9 @@ static void _set_tres_cnt(slurmctld_resv_t *resv_ptr,
  * _license_validate2 - A variant of license_validate which considers the
  * licenses used by overlapping reservations
  */
-static List _license_validate2(resv_desc_msg_t *resv_desc_ptr, bool *valid)
+static list_t *_license_validate2(resv_desc_msg_t *resv_desc_ptr, bool *valid)
 {
-	List license_list, merged_list;
+	list_t *license_list = NULL, *merged_list = NULL;
 	list_itr_t *iter;
 	slurmctld_resv_t *resv_ptr;
 	char *merged_licenses;
@@ -2806,7 +2811,7 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 	int account_cnt = 0, user_cnt = 0;
 	char **account_list = NULL;
 	uid_t *user_list = NULL;
-	List license_list = (List) NULL;
+	list_t *license_list = NULL;
 	uint32_t total_node_cnt = 0;
 	bool account_not = false, user_not = false;
 	resv_select_t resv_select = { 0 };
@@ -2841,6 +2846,7 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 					RESERVE_FLAG_REPLACE_DOWN |
 					RESERVE_FLAG_NO_HOLD_JOBS |
 					RESERVE_FLAG_MAGNETIC |
+					RESERVE_FLAG_USER_DEL |
 					RESERVE_TRES_PER_NODE;
 	}
 
@@ -3178,7 +3184,7 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 		resv_ptr->gres_list_alloc = job_ptr->gres_list_req;
 		gres_job_state_log(resv_ptr->gres_list_alloc, 0);
 		job_ptr->gres_list_req = NULL; /* Nothing left to free */
-		job_mgr_list_delete_job(resv_desc_ptr->job_ptr);
+		job_record_delete(resv_desc_ptr->job_ptr);
 		resv_desc_ptr->job_ptr = NULL; /* Nothing left to free */
 	}
 
@@ -3255,7 +3261,7 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 	return SLURM_SUCCESS;
 
  bad_parse:
-	job_mgr_list_delete_job(resv_desc_ptr->job_ptr);
+	job_record_delete(resv_desc_ptr->job_ptr);
 	resv_desc_ptr->job_ptr = NULL;
 	for (i = 0; i < account_cnt; i++)
 		xfree(account_list[i]);
@@ -3528,6 +3534,10 @@ extern int update_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 			resv_ptr->flags &= (~RESERVE_FLAG_MAGNETIC);
 			remove_magnetic_resv = true;
 		}
+		if (resv_desc_ptr->flags & RESERVE_FLAG_USER_DEL)
+			resv_ptr->flags |= RESERVE_FLAG_USER_DEL;
+		if (resv_desc_ptr->flags & RESERVE_FLAG_NO_USER_DEL)
+			resv_ptr->flags &= (~RESERVE_FLAG_USER_DEL);
 
 		/* handle skipping later */
 		if (resv_desc_ptr->flags & RESERVE_FLAG_SKIP) {
@@ -3603,7 +3613,7 @@ extern int update_resv(resv_desc_msg_t *resv_desc_ptr, char **err_msg)
 
 	if (resv_desc_ptr->licenses) {
 		bool valid = true;
-		List license_list;
+		list_t *license_list = NULL;
 		license_list = _license_validate2(resv_desc_ptr, &valid);
 		if (!valid) {
 			info("Reservation %s invalid license update (%s)",
@@ -3938,7 +3948,7 @@ static void _clear_job_resv(slurmctld_resv_t *resv_ptr)
 	list_for_each(job_list, _foreach_clear_job_resv, resv_ptr);
 }
 
-static bool _match_user_assoc(char *assoc_str, List assoc_list, bool deny)
+static bool _match_user_assoc(char *assoc_str, list_t *assoc_list, bool deny)
 {
 	list_itr_t *itr;
 	bool found = 0;
@@ -4036,7 +4046,7 @@ extern buf_t *show_resv(uid_t uid, uint16_t protocol_version)
 	int tmp_offset;
 	buf_t *buffer;
 	time_t now = time(NULL);
-	List assoc_list = NULL;
+	list_t *assoc_list = NULL;
 	bool check_permissions = false;
 	assoc_mgr_lock_t locks = { .assoc = READ_LOCK };
 
@@ -4554,7 +4564,7 @@ static void _resv_node_replace(slurmctld_resv_t *resv_ptr)
 			gres_job_state_log(resv_ptr->gres_list_alloc, 0);
 			job_ptr->gres_list_req = NULL;
 
-			job_mgr_list_delete_job(resv_desc.job_ptr);
+			job_record_delete(resv_desc.job_ptr);
 			resv_desc.job_ptr = NULL;
 
 			if (log_it ||
@@ -4585,7 +4595,7 @@ static void _resv_node_replace(slurmctld_resv_t *resv_ptr)
 			}
 			break;
 		}
-		job_mgr_list_delete_job(resv_desc.job_ptr);
+		job_record_delete(resv_desc.job_ptr);
 		add_nodes /= 2;	/* Try to get idle nodes as possible */
 		if (log_it ||
 		    (slurm_conf.debug_flags & DEBUG_FLAG_RESERVATION)) {
@@ -4671,7 +4681,7 @@ static void _validate_node_choice(slurmctld_resv_t *resv_ptr)
 		resv_ptr->gres_list_alloc = job_ptr->gres_list_req;
 		gres_job_state_log(resv_ptr->gres_list_alloc, 0);
 		job_ptr->gres_list_req = NULL;
-		job_mgr_list_delete_job(resv_desc.job_ptr);
+		job_record_delete(resv_desc.job_ptr);
 		resv_desc.job_ptr = NULL;
 		info("modified reservation %s due to unusable nodes, "
 		     "new nodes: %s", resv_ptr->name, resv_ptr->node_list);
@@ -4682,7 +4692,7 @@ static void _validate_node_choice(slurmctld_resv_t *resv_ptr)
 		debug("reservation %s contains unusable nodes, "
 		      "can't reallocate now", resv_ptr->name);
 	}
-	job_mgr_list_delete_job(resv_desc.job_ptr);
+	job_record_delete(resv_desc.job_ptr);
 	_free_resv_select_members(&resv_select);
 }
 
@@ -4690,7 +4700,7 @@ static void _validate_node_choice(slurmctld_resv_t *resv_ptr)
  * Validate if the user has access to this reservation.
  */
 static bool _validate_user_access(slurmctld_resv_t *resv_ptr,
-				  List user_assoc_list, uid_t uid)
+				  list_t *user_assoc_list, uid_t uid)
 {
 	/* Determine if we have access */
 	if ((accounting_enforce & ACCOUNTING_ENFORCE_ASSOCS) &&
@@ -4861,7 +4871,7 @@ static int _validate_job_resv_internal(job_record_t *job_ptr,
  * get_resv_list - find record for named reservation(s)
  * IN name - reservation name(s) in a comma separated char
  * OUT err_part - The first invalid reservation name.
- * RET List of pointers to the reservations or NULL if not found
+ * RET list of pointers to the reservations or NULL if not found
  * NOTE: Caller must free the returned list
  * NOTE: Caller must free err_part
  */
@@ -5070,10 +5080,10 @@ static int  _resize_resv(slurmctld_resv_t *resv_ptr, uint32_t node_cnt)
 		resv_ptr->gres_list_alloc = job_ptr->gres_list_req;
 		gres_job_state_log(resv_ptr->gres_list_alloc, 0);
 		job_ptr->gres_list_req = NULL;
-		job_mgr_list_delete_job(resv_desc.job_ptr);
+		job_record_delete(resv_desc.job_ptr);
 		resv_desc.job_ptr = NULL;
 	}
-	job_mgr_list_delete_job(resv_desc.job_ptr);
+	job_record_delete(resv_desc.job_ptr);
 
 	return i;
 }
@@ -5465,7 +5475,7 @@ static void _pick_nodes_by_feature_node_cnt(bitstr_t *avail_bitmap,
 					    resv_desc_msg_t *resv_desc_ptr,
 					    resv_select_t *resv_select_ret,
 					    int total_node_cnt,
-					    List feature_list)
+					    list_t *feature_list)
 {
 	bitstr_t *tmp_bitmap = NULL;
 	bitstr_t *feature_bitmap;
@@ -6378,7 +6388,7 @@ extern void job_time_adj_resv(job_record_t *job_ptr)
  * For a given license_list, return the total count of licenses of the
  * specified name
  */
-static int _license_cnt(List license_list, char *lic_name)
+static int _license_cnt(list_t *license_list, char *lic_name)
 {
 	int lic_cnt = 0;
 	list_itr_t *iter;
@@ -6873,15 +6883,28 @@ extern int job_test_resv(job_record_t *job_ptr, time_t *when,
 			    bit_overlap_any(job_ptr->details->req_node_bitmap,
 					    resv_ptr->node_bitmap) &&
 			    (!resv_ptr->tres_str ||
-			     job_ptr->details->whole_node == 1)) {
+			     job_ptr->details->whole_node &
+			     WHOLE_NODE_REQUIRED)) {
 				if (move_time)
 					*when = resv_ptr->end_time;
 				rc = ESLURM_NODES_BUSY;
 				break;
 			}
 
-			if ((resv_ptr->ctld_flags & RESV_CTLD_FULL_NODE) ||
-			    (job_ptr->details->whole_node == 1)) {
+			if (IS_JOB_WHOLE_TOPO(job_ptr)) {
+				bitstr_t *efctv_bitmap =
+					bit_copy(resv_ptr->node_bitmap);
+				topology_g_whole_topo(efctv_bitmap);
+
+				log_flag(RESERVATION, "%s: %pJ will can not share topology with %s",
+					 __func__, job_ptr, resv_ptr->name);
+				bit_and_not(*node_bitmap, efctv_bitmap);
+				FREE_NULL_BITMAP(efctv_bitmap);
+
+			} else if ((resv_ptr->ctld_flags &
+				    RESV_CTLD_FULL_NODE) ||
+				  (job_ptr->details->whole_node &
+				   WHOLE_NODE_REQUIRED)) {
 				log_flag(RESERVATION, "%s: reservation %s uses full nodes or %pJ will not share nodes",
 					 __func__, resv_ptr->name, job_ptr);
 				bit_and_not(*node_bitmap, resv_ptr->node_bitmap);
@@ -7673,7 +7696,7 @@ extern bool validate_resv_uid(char *resv_name, uid_t uid)
 	static bool user_resv_delete = false;
 
 	slurmdb_assoc_rec_t assoc;
-	List assoc_list;
+	list_t *assoc_list = NULL;
 	assoc_mgr_lock_t locks = { .assoc = READ_LOCK };
 	bool found_it = false;
 	slurmctld_resv_t *resv_ptr;
@@ -7682,7 +7705,7 @@ extern bool validate_resv_uid(char *resv_name, uid_t uid)
 	xassert(verify_lock(NODE_LOCK, WRITE_LOCK));
 
 	if (!resv_name)
-		return found_it;
+		return false;
 
 	if (sched_update != slurm_conf.last_update) {
 		if (xstrcasestr(slurm_conf.slurmctld_params,
@@ -7693,8 +7716,11 @@ extern bool validate_resv_uid(char *resv_name, uid_t uid)
 		sched_update = slurm_conf.last_update;
 	}
 
-	if (!user_resv_delete)
-		return found_it;
+	if (!(resv_ptr = find_resv_name(resv_name)))
+		return false;
+
+	if ((!user_resv_delete) && !(resv_ptr->flags & RESERVE_FLAG_USER_DEL))
+		return false;
 
 	memset(&assoc, 0, sizeof(slurmdb_assoc_rec_t));
 	assoc.uid = uid;
@@ -7707,10 +7733,7 @@ extern bool validate_resv_uid(char *resv_name, uid_t uid)
 	    != SLURM_SUCCESS)
 		goto end_it;
 
-	resv_ptr = find_resv_name(resv_name);
-
-	if (resv_ptr &&
-	    _validate_user_access(resv_ptr, assoc_list, uid))
+	if (_validate_user_access(resv_ptr, assoc_list, uid))
 		found_it = true;
 end_it:
 	FREE_NULL_LIST(assoc_list);

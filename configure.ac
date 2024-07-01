@@ -233,6 +233,7 @@ X_AC_UCX
 X_AC_X11
 X_AC_SELINUX
 X_AC_RDKAFKA
+X_AC_S2N
 
 X_AC_CGROUP
 X_AC_BPF
@@ -380,12 +381,14 @@ AC_CONFIG_FILES([Makefile
 		 src/api/Makefile
 		 src/bcast/Makefile
 		 src/common/Makefile
+		 src/conmgr/Makefile
 		 src/database/Makefile
 		 src/interfaces/Makefile
 		 src/lua/Makefile
 		 src/plugins/Makefile
 		 src/plugins/accounting_storage/Makefile
 		 src/plugins/accounting_storage/common/Makefile
+		 src/plugins/accounting_storage/ctld_relay/Makefile
 		 src/plugins/accounting_storage/mysql/Makefile
 		 src/plugins/accounting_storage/slurmdbd/Makefile
 		 src/plugins/acct_gather_energy/Makefile
@@ -427,9 +430,9 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/cred/munge/Makefile
 		 src/plugins/cred/none/Makefile
 		 src/plugins/data_parser/Makefile
-		 src/plugins/data_parser/v0.0.39/Makefile
 		 src/plugins/data_parser/v0.0.40/Makefile
 		 src/plugins/data_parser/v0.0.41/Makefile
+		 src/plugins/data_parser/v0.0.42/Makefile
 		 src/plugins/gpu/Makefile
 		 src/plugins/gpu/common/Makefile
 		 src/plugins/gpu/generic/Makefile
@@ -507,9 +510,13 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/site_factor/example/Makefile
 		 src/plugins/switch/Makefile
 		 src/plugins/switch/hpe_slingshot/Makefile
+		 src/plugins/switch/nvidia_imex/Makefile
 		 src/plugins/task/Makefile
 		 src/plugins/task/affinity/Makefile
 		 src/plugins/task/cgroup/Makefile
+		 src/plugins/tls/Makefile
+		 src/plugins/tls/none/Makefile
+		 src/plugins/tls/s2n/Makefile
 		 src/plugins/topology/Makefile
 		 src/plugins/topology/3d_torus/Makefile
 		 src/plugins/topology/block/Makefile
@@ -541,16 +548,15 @@ AC_CONFIG_FILES([Makefile
 		 src/slurmrestd/plugins/auth/jwt/Makefile
 		 src/slurmrestd/plugins/auth/local/Makefile
 		 src/slurmrestd/plugins/openapi/Makefile
-		 src/slurmrestd/plugins/openapi/dbv0.0.39/Makefile
 		 src/slurmrestd/plugins/openapi/slurmctld/Makefile
 		 src/slurmrestd/plugins/openapi/slurmdbd/Makefile
-		 src/slurmrestd/plugins/openapi/v0.0.39/Makefile
 		 src/sprio/Makefile
 		 src/squeue/Makefile
 		 src/sreport/Makefile
 		 src/srun/Makefile
 		 src/sshare/Makefile
 		 src/sstat/Makefile
+		 src/stepmgr/Makefile
 		 src/strigger/Makefile
 		 src/sview/Makefile
 		 testsuite/Makefile

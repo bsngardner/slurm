@@ -684,6 +684,8 @@ static bool _on_error(void *arg, data_parser_type_t type, int error_code,
 
 		if (e)
 			e->description = str;
+		else
+			xfree(str);
 	}
 
 	if (error_code) {
@@ -694,7 +696,11 @@ static bool _on_error(void *arg, data_parser_type_t type, int error_code,
 			ctxt->rc = error_code;
 	}
 
-	if (source && ctxt)
+	/*
+	 * e is always non-NULL is ctxt is non-NULL, but check if e != NULL to
+	 * silence a coverity warning.
+	 */
+	if (source && ctxt && e)
 		e->source = xstrdup(source);
 
 	if (ctxt)
@@ -732,6 +738,8 @@ static void _on_warn(void *arg, data_parser_type_t type, const char *source,
 
 		if (ctxt)
 			w->description = str;
+		else
+			xfree(str);
 	}
 
 	if (source && ctxt)

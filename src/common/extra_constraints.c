@@ -41,7 +41,6 @@
 #include "src/common/xassert.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
-#include "src/interfaces/serializer.h"
 
 #define _DEBUG 0 /* Set this to non-zero to see detailed debugging */
 
@@ -437,15 +436,11 @@ static bool _valid_parent_child_op(elem_t *parent)
 static void _recurse(char **str_ptr, int *level, elem_t *parent, int *rc)
 {
 	elem_t *child;
-	char *save_ptr;
 
 	xassert(str_ptr);
 	xassert(level);
 	xassert(parent);
 	xassert(rc);
-
-	/* Save a pointer to the beginning of the string */
-	save_ptr = *str_ptr;
 
 	while (**str_ptr && (*rc == SLURM_SUCCESS)) {
 		char save_char;
@@ -485,6 +480,11 @@ static void _recurse(char **str_ptr, int *level, elem_t *parent, int *rc)
 				error("Unbalanced parentheses");
 #endif
 				*rc = SLURM_ERROR;
+				/*
+				 * Do not return because we were not recursively
+				 * called to get here.
+				 */
+				break;
 			}
 			if (!parent->num_children) {
 #if _DEBUG
@@ -578,12 +578,6 @@ static void _recurse(char **str_ptr, int *level, elem_t *parent, int *rc)
 	 * underflow conditions and return an error instead.
 	 */
 	xassert(*level >= 0);
-
-	/*
-	 * Restore the pointer to the beginning so it can be free'd by the
-	 * caller if it was malloc'd.
-	 */
-	*str_ptr = save_ptr;
 
 	if (*level) {
 		/* Unbalanced parentheses or parsing error */
@@ -816,7 +810,7 @@ extern int extra_constraints_parse(char *extra, elem_t **head)
 {
 	int rc = SLURM_SUCCESS;
 	int level = 0;
-	char *copy;
+	char *copy, *copy_start;
 	elem_t *tree_head;
 
 	xassert(head);
@@ -833,10 +827,10 @@ extern int extra_constraints_parse(char *extra, elem_t **head)
 	copy = xstrdup(extra);
 	tree_head = _alloc_tree();
 	/*
-	 * _recurse is currently not destructive of the string.
-	 * However, just in case this changes in the future, operate on a copy
-	 * of the string.
+	 * _recurse modifies the string pointer, so save a copy of the pointer
+	 * to the beginning of the string so it can be free'd.
 	 */
+	copy_start = copy; /* Save a pointer to the beginning of the string */
 	_recurse(&copy, &level, tree_head, &rc);
 	if (rc != SLURM_SUCCESS) {
 		error("%s: Parsing %s failed", __func__, extra);
@@ -867,7 +861,7 @@ extern int extra_constraints_parse(char *extra, elem_t **head)
 #endif
 
 	*head = tree_head;
-	xfree(copy);
+	xfree(copy_start);
 	return rc;
 }
 

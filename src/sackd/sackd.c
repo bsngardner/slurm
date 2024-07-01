@@ -39,7 +39,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "src/common/conmgr.h"
 #include "src/common/daemonize.h"
 #include "src/common/env.h"
 #include "src/common/fd.h"
@@ -50,6 +49,8 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/xsystemd.h"
+
+#include "src/conmgr/conmgr.h"
 
 #include "src/interfaces/auth.h"
 #include "src/interfaces/hash.h"
@@ -427,7 +428,7 @@ extern int main(int argc, char **argv)
 		if (xdaemon())
 			error("daemon(): %m");
 
-	init_conmgr(0, 0, callbacks);
+	conmgr_init(0, 0, callbacks);
 
 	conmgr_add_signal_work(SIGINT, _on_sigint, NULL, "on_sigint()");
 	conmgr_add_signal_work(SIGHUP, _on_sighup, NULL, "_on_sighup()");

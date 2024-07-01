@@ -212,6 +212,27 @@ const openapi_path_binding_t openapi_paths[] = {
 		.flags = OP_FLAGS,
 	},
 	{
+		.path = "/slurm/{data_parser}/job/allocate",
+		.callback = op_handler_alloc_job,
+		.methods = (openapi_path_binding_method_t[]) {
+			{
+				.method = HTTP_REQUEST_POST,
+				.tags = tags,
+				.summary = "submit new job allocation without any steps that must be signaled to stop",
+				.response = {
+					.type = DATA_PARSER_OPENAPI_JOB_ALLOC_RESP,
+					.description = "job allocation response",
+				},
+				.body = {
+					.type = DATA_PARSER_JOB_ALLOC_REQ,
+					.description = "Job allocation description",
+				},
+			},
+			{0}
+		},
+		.flags = OP_FLAGS,
+	},
+	{
 		.path = "/slurm/{data_parser}/jobs/",
 		.callback = op_handler_jobs,
 		.methods = (openapi_path_binding_method_t[]) {
@@ -438,11 +459,6 @@ const openapi_path_binding_t openapi_paths[] = {
 	},
 	{0}
 };
-
-extern data_t *slurm_openapi_p_get_specification(openapi_spec_flags_t *flags)
-{
-	return NULL;
-}
 
 extern void slurm_openapi_p_init(void)
 {
