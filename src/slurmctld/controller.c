@@ -234,6 +234,7 @@ static pthread_mutex_t sched_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char *	slurm_conf_filename;
 static pthread_mutex_t reconfig_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t reconfig_cond = PTHREAD_COND_INITIALIZER;
+static bool waiting_conmgr_quiesce = false;
 static int reconfig_threads = 0;
 static int reconfig_rc = SLURM_SUCCESS;
 static bool reconfig = false;
@@ -260,7 +261,6 @@ static int          _accounting_cluster_ready();
 static int          _accounting_mark_all_nodes_down(char *reason);
 static void *       _assoc_cache_mgr(void *no_data);
 static int          _controller_index(void);
-static void         _become_slurm_user(void);
 static void _close_ports(void);
 static void         _create_clustername_file(void);
 static void _flush_rpcs(void);
@@ -297,6 +297,52 @@ static void _usage(void);
 static bool         _verify_clustername(void);
 static bool         _wait_for_server_thread(void);
 static void *       _wait_primary_prog(void *arg);
+
+static void _try_to_reconfig_deferred(conmgr_callback_args_t conmgr_args,
+				      void *arg)
+{
+	if (conmgr_args.status != CONMGR_WORK_STATUS_CANCELLED)
+		reconfig_rc = _try_to_reconfig();
+
+	slurm_mutex_lock(&reconfig_mutex);
+	xassert(waiting_conmgr_quiesce);
+	waiting_conmgr_quiesce = false;
+	slurm_cond_broadcast(&reconfig_cond);
+	slurm_mutex_unlock(&reconfig_mutex);
+}
+
+static void _attempt_reconfig(void)
+{
+	info("Attempting to reconfigure");
+
+	if (conmgr_enabled()) {
+		slurm_mutex_lock(&reconfig_mutex);
+		if (!waiting_conmgr_quiesce) {
+			waiting_conmgr_quiesce = true;
+			slurm_mutex_unlock(&reconfig_mutex);
+			conmgr_add_work_quiesced_fifo(_try_to_reconfig_deferred,
+						      NULL);
+		} else {
+			slurm_mutex_unlock(&reconfig_mutex);
+		}
+	} else {
+		reconfig_rc = _try_to_reconfig();
+	}
+
+	slurm_mutex_lock(&reconfig_mutex);
+	while (reconfig_threads) {
+		slurm_cond_broadcast(&reconfig_cond);
+		slurm_cond_wait(&reconfig_cond, &reconfig_mutex);
+	}
+	slurm_mutex_unlock(&reconfig_mutex);
+
+	if (!reconfig_rc) {
+		info("Relinquishing control to new child");
+		_exit(0);
+	}
+
+	recover = 2;
+}
 
 /* main - slurmctld main function, start various threads and process RPCs */
 int main(int argc, char **argv)
@@ -419,10 +465,10 @@ int main(int argc, char **argv)
 		 * able to write a core dump.
 		 */
 		_init_pidfile();
-		_become_slurm_user();
+		become_slurm_user();
 	}
 
-	/* open ports must happen after _become_slurm_user() */
+	/* open ports must happen after become_slurm_user() */
 	 _open_ports();
 
 	/*
@@ -781,22 +827,7 @@ int main(int argc, char **argv)
 
 		/* attempt reconfig here */
 		if (reconfig) {
-			info("Attempting to reconfigure");
-			reconfig_rc = _try_to_reconfig();
-
-			slurm_mutex_lock(&reconfig_mutex);
-			while (reconfig_threads) {
-				slurm_cond_broadcast(&reconfig_cond);
-				slurm_cond_wait(&reconfig_cond, &reconfig_mutex);
-			}
-			slurm_mutex_unlock(&reconfig_mutex);
-
-			if (!reconfig_rc) {
-				info("Relinquishing control to new child");
-				_exit(0);
-			}
-
-			recover = 2;
+			_attempt_reconfig();
 			continue;
 		}
 
@@ -1038,8 +1069,6 @@ static int _try_to_reconfig(void)
 	pid_t pid;
 	int to_parent[2] = {-1, -1};
 
-	conmgr_quiesce(true);
-
 	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
 		error("getrlimit(RLIMIT_NOFILE): %m");
 		rlim.rlim_cur = 4096;
@@ -1082,15 +1111,12 @@ static int _try_to_reconfig(void)
 		goto start_child;
 	}
 
-	if (pipe(to_parent) < 0) {
-		error("%s: pipe() failed: %m", __func__);
-		return SLURM_ERROR;
-	}
+	if (pipe(to_parent))
+		fatal("%s: pipe() failed: %m", __func__);
 
 	setenvf(&child_env, "SLURMCTLD_RECONF_PARENT_FD", "%d", to_parent[1]);
 	if ((pid = fork()) < 0) {
-		error("%s: fork() failed, cannot reconfigure.", __func__);
-		return SLURM_ERROR;
+		fatal("%s: fork() failed: %m", __func__);
 	} else if (pid > 0) {
 		pid_t grandchild_pid;
 		int rc;
@@ -1410,10 +1436,6 @@ static void *_slurmctld_rpc_mgr(void *no_data)
 		}
 	}
 
-	/* leave ports open */
-	if (reconfig)
-		return NULL;
-
 	debug3("%s shutting down", __func__);
 
 	rate_limit_shutdown();
@@ -1449,6 +1471,8 @@ static void *_service_connection(void *arg)
 		slurm_addr_t cli_addr;
 		(void) slurm_get_peer_addr(fd, &cli_addr);
 		error("slurm_receive_msg [%pA]: %m", &cli_addr);
+		if (errno == SLURM_PROTOCOL_AUTHENTICATION_ERROR)
+			slurm_send_rc_msg(msg, SLURM_PROTOCOL_AUTHENTICATION_ERROR);
 		/* close the new socket */
 		close(fd);
 		goto cleanup;
@@ -3466,48 +3490,6 @@ end_it:
 	return NULL;
 }
 
-static void _become_slurm_user(void)
-{
-	gid_t slurm_user_gid;
-
-	/* Determine SlurmUser gid */
-	slurm_user_gid = gid_from_uid(slurm_conf.slurm_user_id);
-	if (slurm_user_gid == (gid_t) -1) {
-		fatal("Failed to determine gid of SlurmUser(%u)",
-		      slurm_conf.slurm_user_id);
-	}
-
-	/* Initialize supplementary groups ID list for SlurmUser */
-	if (getuid() == 0) {
-		/* root does not need supplementary groups */
-		if ((slurm_conf.slurm_user_id == 0) &&
-		    (setgroups(0, NULL) != 0)) {
-			fatal("Failed to drop supplementary groups, "
-			      "setgroups: %m");
-		} else if ((slurm_conf.slurm_user_id != 0) &&
-		           initgroups(slurm_conf.slurm_user_name,
-		                      slurm_user_gid)) {
-			fatal("Failed to set supplementary groups, "
-			      "initgroups: %m");
-		}
-	} else {
-		info("Not running as root. Can't drop supplementary groups");
-	}
-
-	/* Set GID to GID of SlurmUser */
-	if ((slurm_user_gid != getegid()) &&
-	    (setgid(slurm_user_gid))) {
-		fatal("Failed to set GID to %u", slurm_user_gid);
-	}
-
-	/* Set UID to UID of SlurmUser */
-	if ((slurm_conf.slurm_user_id != getuid()) &&
-	    (setuid(slurm_conf.slurm_user_id))) {
-		fatal("Can not set uid to SlurmUser(%u): %m",
-		      slurm_conf.slurm_user_id);
-	}
-}
-
 /*
  * Find this host in the controller index, or return -1 on error.
  */
@@ -3857,14 +3839,12 @@ static void _restore_job_dependencies(void)
  */
 extern void slurm_rpc_control_status(slurm_msg_t *msg)
 {
-	slurm_msg_t response_msg;
-	control_status_msg_t data;
+	control_status_msg_t status = {
+		.backup_inx = backup_inx,
+		.control_time = control_time,
+	};
 
-	memset(&data, 0, sizeof(data));
-	data.backup_inx = backup_inx;
-	data.control_time = control_time;
-	response_init(&response_msg, msg, RESPONSE_CONTROL_STATUS, &data);
-	slurm_send_node_msg(msg->conn_fd, &response_msg);
+	(void) send_msg_response(msg, RESPONSE_CONTROL_STATUS, &status);
 }
 
 extern int controller_init_scheduling(bool init_gang)

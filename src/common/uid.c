@@ -107,22 +107,23 @@ int uid_from_string(const char *name, uid_t *uidp)
 	START_TIMER;
 	while (true) {
 		int rc = getpwnam_r(name, &pwd, curr_buf, bufsize, &result);
+		if (!rc && result)
+			break;
 		if (rc == EINTR) {
 			continue;
 		} else if (rc == ERANGE) {
 			bufsize *= 2;
 			curr_buf = xrealloc(buf_malloc, bufsize);
 			continue;
-		} else if (rc) {
-			if (result) {
-				result = NULL;
-				error("%s: getpwnam_r(%s): %s",
-				      __func__, name, slurm_strerror(rc));
-			} else {
-				error("%s: getpwnam_r(%s): no record found",
-				      __func__, name);
-			}
+		} else if ((rc == 0) || (rc == ENOENT) || (rc == ESRCH) ||
+			   (rc == EBADF) || (rc == EPERM)) {
+			debug2("%s: getpwnam_r(%s): no record found",
+			       __func__, name);
+		} else {
+			error("%s: getpwnam_r(%s): %s",
+			      __func__, name, slurm_strerror(rc));
 		}
+		result = NULL;
 		break;
 	}
 	END_TIMER2("getpwnam_r");
@@ -292,22 +293,23 @@ int gid_from_string(const char *name, gid_t *gidp)
 	START_TIMER;
 	while (true) {
 		int rc = getgrnam_r(name, &grp, curr_buf, bufsize, &result);
+		if (!rc && result)
+			break;
 		if (rc == EINTR) {
 			continue;
 		} else if (rc == ERANGE) {
 			bufsize *= 2;
 			curr_buf = xrealloc(buf_malloc, bufsize);
 			continue;
-		} else if (rc) {
-			if (result) {
-				result = NULL;
-				error("%s: getgrnam_r(%s): %s",
-				      __func__, name, slurm_strerror(rc));
-			} else {
-				error("%s: getgrnam_r(%s): no record found",
-				      __func__, name);
-			}
+		} else if ((rc == 0) || (rc == ENOENT) || (rc == ESRCH) ||
+			   (rc == EBADF) || (rc == EPERM)) {
+			debug2("%s: getgrnam_r(%s): no record found",
+			       __func__, name);
+		} else {
+			error("%s: getgrnam_r(%s): %s",
+			      __func__, name, slurm_strerror(rc));
 		}
+		result = NULL;
 		break;
 	}
 	END_TIMER2("getgrnam_r");
@@ -335,22 +337,23 @@ int gid_from_string(const char *name, gid_t *gidp)
 	START_TIMER;
 	while (true) {
 		int rc = getgrgid_r(l, &grp, curr_buf, bufsize, &result);
+		if (!rc && result)
+			break;
 		if (rc == EINTR) {
 			continue;
 		} else if (rc == ERANGE) {
 			bufsize *= 2;
 			curr_buf = xrealloc(buf_malloc, bufsize);
 			continue;
-		} else if (rc) {
-			if (result) {
-				result = NULL;
-				error("%s: getgrgid_r(%ld): %s",
-				      __func__, l, slurm_strerror(rc));
-			} else {
-				error("%s: getgrgid_r(%ld): no record found",
-				      __func__, l);
-			}
+		} else if ((rc == 0) || (rc == ENOENT) || (rc == ESRCH) ||
+			   (rc == EBADF) || (rc == EPERM)) {
+			debug2("%s: getgrgid_r(%ld): no record found",
+			       __func__, l);
+		} else {
+			error("%s: getgrgid_r(%ld): %s",
+			      __func__, l, slurm_strerror(rc));
 		}
+		result = NULL;
 		break;
 	}
 	END_TIMER2("getgrgid_r");
@@ -384,7 +387,7 @@ extern char *gid_to_string(gid_t gid)
 char *gid_to_string_or_null(gid_t gid)
 {
 	DEF_TIMERS;
-	struct group grp, *result;
+	struct group grp, *result = NULL;
 	char buf_stack[PW_BUF_SIZE];
 	char *buf_malloc = NULL;
 	size_t bufsize = PW_BUF_SIZE;
@@ -394,22 +397,23 @@ char *gid_to_string_or_null(gid_t gid)
 	START_TIMER;
 	while (true) {
 		int rc = getgrgid_r(gid, &grp, curr_buf, bufsize, &result);
+		if (!rc && result)
+			break;
 		if (rc == EINTR) {
 			continue;
 		} else if (rc == ERANGE) {
 			bufsize *= 2;
 			curr_buf = xrealloc(buf_malloc, bufsize);
 			continue;
-		} else if (rc) {
-			if (result) {
-				result = NULL;
-				error("%s: getgrgid_r(%d): %s",
-				      __func__, gid, slurm_strerror(rc));
-			} else {
-				error("%s: getgrgid_r(%d): no record found",
-				      __func__, gid);
-			}
+		} else if ((rc == 0) || (rc == ENOENT) || (rc == ESRCH) ||
+			   (rc == EBADF) || (rc == EPERM)) {
+			debug2("%s: getgrgid_r(%d): no record found",
+			       __func__, gid);
+		} else {
+			error("%s: getgrgid_r(%d): %s",
+			      __func__, gid, slurm_strerror(rc));
 		}
+		result = NULL;
 		break;
 	}
 	END_TIMER2("getgrgid_r");

@@ -215,19 +215,7 @@ static bool _is_valid_number(char *tok, uint64_t *value)
  */
 extern void slurm_msg_t_init(slurm_msg_t *msg)
 {
-	memset(msg, 0, sizeof(slurm_msg_t));
-
-	msg->auth_uid = SLURM_AUTH_NOBODY;
-	msg->auth_gid = SLURM_AUTH_NOBODY;
-	msg->conn_fd = -1;
-	msg->msg_type = NO_VAL16;
-	msg->protocol_version = NO_VAL16;
-
-#ifndef NDEBUG
-	msg->flags = drop_priv_flag;
-#endif
-
-	forward_init(&msg->forward);
+	*msg = (slurm_msg_t) SLURM_MSG_INITIALIZER;
 }
 
 /*
@@ -282,9 +270,9 @@ extern char *slurm_add_slash_to_quotes(char *str)
 	return copy;
 }
 
-extern List slurm_copy_char_list(List char_list)
+extern list_t *slurm_copy_char_list(list_t *char_list)
 {
-	List ret_list = NULL;
+	list_t *ret_list = NULL;
 	char *tmp_char = NULL;
 	list_itr_t *itr = NULL;
 
@@ -352,7 +340,7 @@ static int _char_list_append_str(void *x, void *arg)
 	return SLURM_SUCCESS;
 }
 
-extern char *slurm_char_list_to_xstr(List char_list)
+extern char *slurm_char_list_to_xstr(list_t *char_list)
 {
 	char *out = NULL;
 
@@ -383,11 +371,11 @@ extern void slurm_remove_char_list_from_char_list(list_t *haystack,
 
 static int _char_list_copy(void *item, void *dst)
 {
-	list_append((List)dst, xstrdup((char *)item));
+	list_append((list_t *) dst, xstrdup((char *)item));
 	return SLURM_SUCCESS;
 }
 
-extern int slurm_char_list_copy(List dst, List src)
+extern int slurm_char_list_copy(list_t *dst, list_t *src)
 {
 	xassert(dst);
 	xassert(src);
@@ -397,9 +385,9 @@ extern int slurm_char_list_copy(List dst, List src)
 	return SLURM_SUCCESS;
 }
 
-extern int slurm_parse_char_list(List char_list, char *names, void *args,
-				 int (*func_ptr)(List char_list, char *name,
-						 void *args))
+extern int slurm_parse_char_list(
+	list_t *char_list, char *names, void *args,
+	int (*func_ptr)(list_t *char_list, char *name, void *args))
 {
 	int i = 0, start = 0, count = 0, result = 0;
 	char quote_c = '\0';
@@ -454,7 +442,7 @@ extern int slurm_parse_char_list(List char_list, char *names, void *args,
 	return count;
 }
 
-extern int slurm_addto_char_list(List char_list, char *names)
+extern int slurm_addto_char_list(list_t *char_list, char *names)
 {
 	return slurm_addto_char_list_with_case(char_list, names, true);
 }
@@ -474,7 +462,7 @@ static void _add_to_list(char *name,
 }
 
 /* returns number of objects added to list */
-extern int slurm_addto_char_list_with_case(List char_list, char *names,
+extern int slurm_addto_char_list_with_case(list_t *char_list, char *names,
 					   bool lower_case_normalization)
 {
 	int i = 0, start = 0, cnt = 0;
@@ -593,7 +581,7 @@ extern int slurm_addto_char_list_with_case(List char_list, char *names,
 }
 
 /* Parses string and converts names to either uid or gid list */
-static int _slurm_addto_id_char_list_internal(List char_list, char *name,
+static int _slurm_addto_id_char_list_internal(list_t *char_list, char *name,
 					      void *x)
 {
 	bool gid = *(bool *)x;
@@ -613,7 +601,7 @@ static int _slurm_addto_id_char_list_internal(List char_list, char *name,
 }
 
 /* Parses string and converts names to either uid or gid list */
-extern int slurm_addto_id_char_list(List char_list, char *names, bool gid)
+extern int slurm_addto_id_char_list(list_t *char_list, char *names, bool gid)
 {
 	if (!char_list) {
 		error("No list was given to fill in");
@@ -630,7 +618,7 @@ typedef struct {
 	int mode;
 } char_list_internal_args_t;
 
-static int _slurm_addto_mode_char_list_internal(List char_list, char *name,
+static int _slurm_addto_mode_char_list_internal(list_t *char_list, char *name,
 						void *args_in)
 {
 	char *tmp_name = NULL;
@@ -672,7 +660,7 @@ static int _slurm_addto_mode_char_list_internal(List char_list, char *name,
 /* Parses strings such as stra,+strb,-strc and appends the default mode to each
  * string in the list if no specific mode is listed.
  * RET: returns the number of items added to the list. -1 on error. */
-extern int slurm_addto_mode_char_list(List char_list, char *names, int mode)
+extern int slurm_addto_mode_char_list(list_t *char_list, char *names, int mode)
 {
 	char_list_internal_args_t args = {0};
 
@@ -687,7 +675,7 @@ extern int slurm_addto_mode_char_list(List char_list, char *names, int mode)
 			      	     _slurm_addto_mode_char_list_internal);
 }
 
-static int _addto_step_list_internal(List step_list, char *name, void *x)
+static int _addto_step_list_internal(list_t *step_list, char *name, void *x)
 {
 	slurm_selected_step_t *selected_step = NULL;
 
@@ -709,7 +697,7 @@ static int _addto_step_list_internal(List step_list, char *name, void *x)
 }
 
 /* returns number of objects added to list */
-extern int slurm_addto_step_list(List step_list, char *names)
+extern int slurm_addto_step_list(list_t *step_list, char *names)
 {
 	if (!step_list) {
 		error("No list was given to fill in");
@@ -6248,7 +6236,7 @@ extern void purge_agent_args(agent_arg_t *agent_arg_ptr)
 					agent_arg_ptr->msg_args);
 		} else if (agent_arg_ptr->msg_type ==
 				RESPONSE_HET_JOB_ALLOCATION) {
-			List alloc_list = agent_arg_ptr->msg_args;
+			list_t *alloc_list = agent_arg_ptr->msg_args;
 			FREE_NULL_LIST(alloc_list);
 		} else if ((agent_arg_ptr->msg_type == REQUEST_ABORT_JOB)    ||
 			 (agent_arg_ptr->msg_type == REQUEST_TERMINATE_JOB)  ||

@@ -416,26 +416,8 @@ extern int load_all_node_state ( bool state_only )
 			 * cpu_spec_list, core_spec_cnt, port are only restored
 			 * for dynamic nodes, otherwise always trust slurm.conf
 			 */
-			config_record_t *config_ptr;
-			config_ptr = create_config_record();
-			config_ptr->boards = node_state_rec->boards;
-			config_ptr->core_spec_cnt =
-				node_state_rec->core_spec_cnt;
-			config_ptr->cores = node_state_rec->cores;
-			config_ptr->cpu_spec_list =
-				xstrdup(node_state_rec->cpu_spec_list);
-			config_ptr->cpus = node_state_rec->cpus;
-			config_ptr->feature = xstrdup(node_state_rec->features);
-			config_ptr->gres = xstrdup(node_state_rec->gres);
-			config_ptr->node_bitmap = bit_alloc(node_record_count);
-			config_ptr->nodes = xstrdup(node_state_rec->name);
-			config_ptr->real_memory = node_state_rec->real_memory;
-			config_ptr->res_cores_per_gpu =
-				node_state_rec->res_cores_per_gpu;
-			config_ptr->threads = node_state_rec->threads;
-			config_ptr->tmp_disk = node_state_rec->tmp_disk;
-			config_ptr->tot_sockets = node_state_rec->tot_sockets;
-			config_ptr->weight = node_state_rec->weight;
+			config_record_t *config_ptr =
+				config_record_from_node_record(node_state_rec);
 
 			if ((error_code = add_node_record(node_state_rec->name,
 							  config_ptr,
@@ -939,7 +921,61 @@ extern buf_t *pack_all_nodes(uint16_t show_flags, uid_t uid,
 	buffer = init_buf(BUF_SIZE * 16);
 	nodes_packed = 0;
 
-	if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
+	if (protocol_version >= SLURM_24_11_PROTOCOL_VERSION) {
+		bitstr_t *hidden_nodes = bit_alloc(node_record_count);
+		uint32_t pack_bitmap_offset;
+		bool repack_hidden = false;
+
+		/* write header: count, time, hidden node bitmap */
+		pack32(nodes_packed, buffer);
+		pack_time(now, buffer);
+		pack_bitmap_offset = get_buf_offset(buffer);
+		pack_bit_str_hex(hidden_nodes, buffer);
+
+		/* write node records */
+		for (inx = 0; inx < node_record_count; inx++) {
+			if (!node_record_table_ptr[inx])
+				goto pack_empty_SLURM_24_11_PROTOCOL_VERSION;
+			node_ptr = node_record_table_ptr[inx];
+			xassert(node_ptr->magic == NODE_MAGIC);
+			xassert(node_ptr->config_ptr->magic == CONFIG_MAGIC);
+
+			/*
+			 * We can't avoid packing node records without breaking
+			 * the node index pointers. So pack a node with a name
+			 * of NULL and let the caller deal with it.
+			 */
+			hidden = false;
+			if (((show_flags & SHOW_ALL) == 0) &&
+			    !privileged &&
+			    (_node_is_hidden(node_ptr, &pack_info)))
+				hidden = true;
+			else if (IS_NODE_FUTURE(node_ptr) &&
+				 (!(show_flags & SHOW_FUTURE)))
+				hidden = true;
+			else if ((node_ptr->name == NULL) ||
+				 (node_ptr->name[0] == '\0'))
+				hidden = true;
+
+			if (hidden) {
+pack_empty_SLURM_24_11_PROTOCOL_VERSION:
+				bit_set(hidden_nodes, inx);
+				repack_hidden = true;
+			} else {
+				_pack_node(node_ptr, buffer, protocol_version,
+					   show_flags);
+			}
+			nodes_packed++;
+		}
+
+		if (repack_hidden) {
+			tmp_offset = get_buf_offset(buffer);
+			set_buf_offset(buffer, pack_bitmap_offset);
+			pack_bit_str_hex(hidden_nodes, buffer);
+			set_buf_offset(buffer, tmp_offset);
+		}
+		FREE_NULL_BITMAP(hidden_nodes);
+	} else if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		/* write header: count and time */
 		pack32(nodes_packed, buffer);
 		pack_time(now, buffer);
@@ -1032,7 +1068,38 @@ extern buf_t *pack_one_node(uint16_t show_flags, uid_t uid, char *node_name,
 	buffer = init_buf(BUF_SIZE);
 	nodes_packed = 0;
 
-	if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
+	if (protocol_version >= SLURM_24_11_PROTOCOL_VERSION) {
+		/* write header: count and time */
+		pack32(nodes_packed, buffer);
+		pack_time(now, buffer);
+		/* Mirror _unpack_node_info_msg */
+		pack_bit_str_hex(NULL, buffer);
+
+		/* write node records */
+		if (node_name)
+			node_ptr = find_node_record(node_name);
+		else
+			node_ptr = node_record_table_ptr[0];
+		if (node_ptr) {
+			hidden = false;
+			if (((show_flags & SHOW_ALL) == 0) &&
+			    !privileged &&
+			    (_node_is_hidden(node_ptr, &pack_info)))
+				hidden = true;
+			else if (IS_NODE_FUTURE(node_ptr) &&
+				 (!(show_flags & SHOW_FUTURE)))
+				hidden = true;
+			else if ((node_ptr->name == NULL) ||
+				 (node_ptr->name[0] == '\0'))
+				hidden = true;
+
+			if (!hidden) {
+				_pack_node(node_ptr, buffer, protocol_version,
+					   show_flags);
+				nodes_packed++;
+			}
+		}
+	} else if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		/* write header: count and time */
 		pack32(nodes_packed, buffer);
 		pack_time(now, buffer);

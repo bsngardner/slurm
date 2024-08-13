@@ -1,4 +1,4 @@
-.TH sbatch "1" "Slurm Commands" "May 2024" "Slurm Commands"
+.TH sbatch "1" "Slurm Commands" "July 2024" "Slurm Commands"
 
 .SH "NAME"
 sbatch \- Submit a batch script to Slurm.
@@ -998,6 +998,11 @@ inherit the variable from the caller's environment. If the caller doesn't
 have an environment variable defined for \fIEDITOR\fR, then the job's
 environment will use the value given by \fB\-\-export\fR.
 .RE
+
+\fBNOTE\fR: NONE and [\fIALL\fR,]<\fIenvironment_variables\fR> implicitly
+work as if \fB--get-user-env\fR was defined. Please see the implications
+of this in its respective section.
+
 .RE
 .IP
 
@@ -1074,6 +1079,14 @@ If \fImode\fR not specified, the mode established at Slurm build time
 is used.
 Example of use include "\-\-get\-user\-env", "\-\-get\-user\-env=10"
 "\-\-get\-user\-env=10L", and "\-\-get\-user\-env=S".
+
+\fBNOTE\fR: The explicit or implicit use of \fB--get-user-env\fR relies in
+the capability of being able to create PID and mount namespaces. It is very
+advisable to ensure that PID and mount namespace creation is available and
+not limited (check that \fB/proc/sys/user/max_[pid|mnt]_namespaces\fR
+is not 0). Although they are not strictly mandatory for \fB--get-user-env\fR
+to work, they ensure that there are no orphan processes left after the
+environment is retrieved.
 .IP
 
 .TP
@@ -1555,7 +1568,8 @@ per task; \fB\-\-mem\-per\-cpu\fR will be reduced to a value no larger than
 \fBMaxMemPerCPU\fR; \fB\-\-cpus\-per\-task\fR will be set and the value of
 \fB\-\-cpus\-per\-task\fR multiplied by the new \fB\-\-mem\-per\-cpu\fR
 value will equal the original \fB\-\-mem\-per\-cpu\fR value specified by
-the user.
+the user. If the user already specified a value for \fB\-\-cpus\-per\-task\fR,
+it will be respected and only the total amount of allocated CPUs will change.
 This parameter would generally be used if individual processors
 are allocated to jobs (\fBSelectType=select/cons_tres\fR).
 If resources are allocated by core, socket, or whole nodes, then the number
@@ -2621,6 +2635,11 @@ Job array ID (index) number.
 .IP
 
 .TP
+\fB%b\fR
+Job array ID (index) number modulo 10.
+.IP
+
+.TP
 \fB%J\fR
 jobid.stepid of the running job. (e.g. "128.0")
 .IP
@@ -3192,12 +3211,6 @@ Only set if the \fB\-\-gpus\-per\-socket\fR option is specified.
 .IP
 
 .TP
-\fBSLURM_GPUS_PER_TASK\fR
-Requested GPU count per allocated task.
-Only set if the \fB\-\-gpus\-per\-task\fR option is specified.
-.IP
-
-.TP
 \fBSLURM_GTIDS\fR
 Global task IDs running on this node. Zero origin and comma separated.
 It is read internally by pmi if Slurm was built with pmi support. Leaving
@@ -3459,9 +3472,9 @@ hardware component type.
 
 .TP
 \fBSLURM_TRES_PER_TASK\fR
-Set to the value of \fB\-\-tres\-per\-task\fR. If \fB\-\-cpus\-per\-task\fR is
-specified, it is also set in \fBSLURM_TRES_PER_TASK\fR as if it were specified
-in \fB\-\-tres\-per\-task\fR.
+Set to the value of \fB\-\-tres\-per\-task\fR. If \fB\-\-cpus\-per\-task\fR or
+\fB\-\-gpus\-per\-task\fR is specified, it is also set in
+\fBSLURM_TRES_PER_TASK\fR as if it were specified in \fB\-\-tres\-per\-task\fR.
 .IP
 
 .TP

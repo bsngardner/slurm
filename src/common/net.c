@@ -323,6 +323,9 @@ extern char *sockaddr_to_string(const slurm_addr_t *addr, socklen_t addrlen)
 		const struct sockaddr_un *addr_un =
 			(const struct sockaddr_un *) addr;
 
+		xassert(addr_un->sun_path[sizeof(addr_un->sun_path) - 1] ==
+			'\0');
+
 		/* path may not be set */
 		if (addr_un->sun_path[0])
 			return xstrdup_printf("unix:%s", addr_un->sun_path);
@@ -357,4 +360,22 @@ extern char *addrinfo_to_string(const struct addrinfo *addr)
 {
 	return sockaddr_to_string((const slurm_addr_t *) addr->ai_addr,
 				  addr->ai_addrlen);
+}
+
+extern slurm_addr_t sockaddr_from_unix_path(const char *path)
+{
+	slurm_addr_t addr = {
+		.ss_family = AF_UNSPEC,
+	};
+	struct sockaddr_un *un = (struct sockaddr_un *) &addr;
+
+	if (!path)
+		return addr;
+
+	if (strlcpy(un->sun_path, path, sizeof(un->sun_path)) != strlen(path))
+		return addr;
+
+	/* Did not overflow - set family to indicate success */
+	addr.ss_family = AF_UNIX;
+	return addr;
 }

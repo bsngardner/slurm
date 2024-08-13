@@ -153,6 +153,11 @@ typedef struct {
 	char *type;
 } slurmdb_tres_nct_rec_t;
 
+typedef struct {
+	char *part;
+	uint32_t prio;
+} PART_PRIO_t;
+
 typedef enum {
 	TRES_EXPLODE_COUNT = 1,
 	TRES_EXPLODE_NODE,
@@ -183,7 +188,7 @@ typedef struct {
 	data_t *parent_path;
 	const char *caller;
 	ssize_t index;
-	List qos_list;
+	list_t *qos_list;
 	args_t *args;
 } foreach_qos_string_id_t;
 
@@ -2210,7 +2215,7 @@ static int PARSE_FUNC(JOB_STATE_ID_STRING)(const parser_t *const parser,
 {
 	int rc = SLURM_SUCCESS;
 	char **dst = obj;
-	uint32_t state;
+	uint32_t state = 0;
 
 	if (data_get_type(src) == DATA_TYPE_INT_64)
 		state = data_get_int(src);
@@ -2228,7 +2233,7 @@ static int DUMP_FUNC(JOB_STATE_ID_STRING)(const parser_t *const parser,
 {
 	int rc;
 	char **src = obj;
-	uint32_t state;
+	uint32_t state = 0;
 	data_t *parent_path, *dsrc;
 
 	parent_path = data_set_list(data_new());
@@ -4114,8 +4119,9 @@ static int _dump_node_res(data_t *dst, job_resources_t *j,
 	node.sockets = xcalloc((j->sockets_per_node[sock_inx] + 1),
 			       sizeof(*node.sockets));
 	for (uint32_t i = 0; i < j->sockets_per_node[sock_inx]; i++)
-		node.sockets[i].cores = xcalloc((j->cores_per_socket[i] + 1),
-						sizeof(*node.sockets[i].cores));
+		node.sockets[i].cores =
+			xcalloc((j->cores_per_socket[sock_inx] + 1),
+				sizeof(*node.sockets[i].cores));
 
 	for (uint32_t i = 0; i < bit_reps; i++) {
 		uint32_t socket_inx = i / j->cores_per_socket[sock_inx];
@@ -4201,6 +4207,34 @@ static int DUMP_FUNC(JOB_RES_NODES)(const parser_t *const parser, void *obj,
 
 	FREE_NULL_HOSTLIST(hl);
 	return SLURM_SUCCESS;
+}
+
+PARSE_DISABLED(PRIORITY_BY_PARTITION)
+
+static int DUMP_FUNC(PRIORITY_BY_PARTITION)(const parser_t *const parser,
+					    void *obj, data_t *dst,
+					    args_t *args)
+{
+	slurm_job_info_t *job = obj;
+	int rc = 0, count = 0;
+	PART_PRIO_t part_prio;
+	char *tmp_token = NULL, *saveptr = NULL;
+	xassert(job);
+
+	data_set_list(dst);
+
+	if (!job->priority_array)
+		return SLURM_SUCCESS;
+
+	tmp_token = strtok_r(job->priority_array_parts, ",", &saveptr);
+	while (tmp_token && !rc) {
+		part_prio.part = tmp_token;
+		part_prio.prio = job->priority_array[count];
+		rc = DUMP(PART_PRIO, part_prio, data_list_append(dst), args);
+		count++;
+		tmp_token = strtok_r(NULL, ",", &saveptr);
+	}
+	return rc;
 }
 
 PARSE_DISABLED(JOB_INFO_MSG)
@@ -6969,6 +7003,7 @@ static const parser_t PARSER_ARRAY(ACCOUNT_SHORT)[] = {
 static const parser_t PARSER_ARRAY(ACCOUNTING)[] = {
 	add_parse(UINT64, alloc_secs, "allocated/seconds", NULL),
 	add_parse(UINT32, id, "id", NULL),
+	add_parse(UINT32, id_alt, "id_alt", NULL),
 	add_parse(TIMESTAMP, period_start, "start", NULL),
 	add_parse(TRES, tres_rec, "TRES", NULL),
 };
@@ -7070,8 +7105,11 @@ static const parser_t PARSER_ARRAY(QOS)[] = {
 	add_parse(UINT32, grace_time, "limits/grace_time", NULL),
 	add_parse(UINT32_NO_VAL, grp_jobs_accrue, "limits/max/active_jobs/accruing", NULL),
 	add_parse(UINT32_NO_VAL, grp_jobs, "limits/max/active_jobs/count", NULL),
+	add_parse(UINT32_NO_VAL, grp_submit_jobs, "limits/max/jobs/count", "Maximum number of jobs which can be in a pending or running state at any time in aggregate for this association and all associations which are children of this association."),
 	add_parse(TRES_STR, grp_tres, "limits/max/tres/total", NULL),
 	add_skip(grp_tres_ctld), /* not packed */
+	add_parse(TRES_STR, grp_tres_mins, "limits/max/tres/minutes/total", "The total number of TRES minutes that can possibly be used by past, present and future jobs running from this association and its children."),
+	add_skip(grp_tres_mins_ctld), /* not packed */
 	add_parse(TRES_STR, grp_tres_run_mins, "limits/max/tres/minutes/per/qos", NULL),
 	add_skip(grp_tres_run_mins_ctld), /* not packed */
 	add_parse(STRING, name, "name", NULL),
@@ -7105,6 +7143,7 @@ static const parser_t PARSER_ARRAY(QOS)[] = {
 	add_parse_bit_flag_array(slurmdb_qos_rec_t, QOS_PREEMPT_MODES, false, preempt_mode, "preempt/mode", NULL),
 	add_parse(UINT32_NO_VAL, preempt_exempt_time, "preempt/exempt_time", NULL),
 	add_parse(UINT32_NO_VAL, priority, "priority", NULL),
+	add_skip(relative_tres_cnt),
 	add_skip(usage), /* not packed */
 	add_parse(FLOAT64_NO_VAL, usage_factor, "usage_factor", NULL),
 	add_parse(FLOAT64_NO_VAL, usage_thres, "usage_threshold", NULL),
@@ -7532,6 +7571,14 @@ static const parser_t PARSER_ARRAY(LICENSE)[] = {
 };
 #undef add_parse
 
+#define add_parse(mtype, field, path, desc) \
+	add_parser(PART_PRIO_t, mtype, false, field, 0, path, desc)
+static const parser_t PARSER_ARRAY(PART_PRIO)[] = {
+	add_parse(STRING, part, "partition", NULL),
+	add_parse(UINT32, prio, "priority", NULL),
+};
+#undef add_parse
+
 static const flag_bit_t PARSER_FLAG_ARRAY(JOB_FLAGS)[] = {
 	add_flag_bit(KILL_INV_DEP, "KILL_INVALID_DEPENDENCY"),
 	add_flag_bit(NO_KILL_INV_DEP, "NO_KILL_INVALID_DEPENDENCY"),
@@ -7730,6 +7777,7 @@ static const parser_t PARSER_ARRAY(JOB_INFO)[] = {
 	add_parse(TIMESTAMP_NO_VAL, pre_sus_time, "pre_sus_time", NULL),
 	add_parse_overload(HOLD, priority, 1, "hold", "Hold (true) or release (false) job"),
 	add_parse_overload(UINT32_NO_VAL, priority, 1, "priority", "Request specific job priority"),
+	add_cparse(PRIORITY_BY_PARTITION, "priority_by_partition", NULL),
 	add_parse(ACCT_GATHER_PROFILE, profile, "profile", NULL),
 	add_parse(QOS_NAME, qos, "qos", NULL),
 	add_parse(BOOL, reboot, "reboot", NULL),
@@ -8553,15 +8601,19 @@ static const parser_t PARSER_ARRAY(JOB_CONDITION)[] = {
 #undef add_cparse
 #undef add_flags
 
+static const flag_bit_t PARSER_FLAG_ARRAY(QOS_CONDITION_FLAGS)[] = {
+	add_flag_bit(QOS_COND_FLAG_WITH_DELETED, "Include Deleted QOS"),
+};
+
 #define add_parse(mtype, field, path, desc) \
 	add_parser(slurmdb_qos_cond_t, mtype, false, field, 0, path, desc)
 static const parser_t PARSER_ARRAY(QOS_CONDITION)[] = {
 	add_parse(CSV_STRING_LIST, description_list, "description", "CSV description list"),
+	add_parse_bit_eflag_array(slurmdb_qos_cond_t, QOS_CONDITION_FLAGS, flags, NULL),
 	add_parse(QOS_ID_STRING_CSV_LIST, id_list, "id", "CSV QOS id list"),
 	add_parse(CSV_STRING_LIST, format_list, "format", "CSV format list"),
 	add_parse(QOS_NAME_CSV_LIST, name_list, "name", "CSV QOS name list"),
 	add_parse_bit_flag_array(slurmdb_qos_cond_t, QOS_PREEMPT_MODES, false, preempt_mode, "preempt_mode", NULL),
-	add_parse(BOOL16, with_deleted, "with_deleted", "Include deleted QOS"),
 };
 #undef add_parse
 
@@ -8611,27 +8663,31 @@ static const parser_t PARSER_ARRAY(USERS_ADD_COND)[] = {
 #undef add_parse_req
 #undef add_skip
 
+static const flag_bit_t PARSER_FLAG_ARRAY(ASSOC_CONDITION_FLAGS)[] = {
+	add_flag_bit(ASSOC_COND_FLAG_WITH_DELETED, "Include deleted associations"),
+	add_flag_bit(ASSOC_COND_FLAG_WITH_USAGE, "Include Usage"),
+	add_flag_bit(ASSOC_COND_FLAG_ONLY_DEFS, "Filter to only defaults"),
+	add_flag_bit(ASSOC_COND_FLAG_RAW_QOS, "Include the raw QOS or delta_qos"),
+	add_flag_bit(ASSOC_COND_FLAG_SUB_ACCTS, "Include sub acct information"),
+	add_flag_bit(ASSOC_COND_FLAG_WOPI, "Exclude parent id/name"),
+	add_flag_bit(ASSOC_COND_FLAG_WOPL, "Exclude limits from parents"),
+};
+
 #define add_parse(mtype, field, path, desc) \
 	add_parser(slurmdb_assoc_cond_t, mtype, false, field, 0, path, desc)
 static const parser_t PARSER_ARRAY(ASSOC_CONDITION)[] = {
 	add_parse(CSV_STRING_LIST, acct_list, "account", "CSV accounts list"),
 	add_parse(CSV_STRING_LIST, cluster_list, "cluster", "CSV clusters list"),
 	add_parse(QOS_ID_STRING_CSV_LIST, def_qos_id_list, "default_qos", "CSV QOS list"),
+	add_parse_bit_eflag_array(slurmdb_assoc_cond_t, ASSOC_CONDITION_FLAGS, flags, NULL),
 	add_parse(CSV_STRING_LIST, format_list, "format", "CSV format list"),
 	add_parse(ASSOC_ID_STRING_CSV_LIST, id_list, "id", "CSV id list"),
-	add_parse(BOOL16, only_defs, "only_defaults", "filter to only defaults"),
 	add_parse(CSV_STRING_LIST, parent_acct_list, "parent_account", "CSV names of parent account"),
 	add_parse(CSV_STRING_LIST, partition_list, "partition", "CSV partition name list"),
 	add_parse(QOS_ID_STRING_CSV_LIST, qos_list, "qos", "CSV QOS list"),
 	add_parse(TIMESTAMP, usage_end, "usage_end", "usage end UNIX timestamp"),
 	add_parse(TIMESTAMP, usage_start, "usage_start", "usage start UNIX timestamp"),
 	add_parse(CSV_STRING_LIST, user_list, "user", "CSV user list"),
-	add_parse(BOOL16, with_usage, "with_usage", "fill in usage"),
-	add_parse(BOOL16, with_deleted, "with_deleted", "return deleted associations"),
-	add_parse(BOOL16, with_raw_qos, "with_raw_qos", "return a raw qos or delta_qos"),
-	add_parse(BOOL16, with_sub_accts, "with_sub_accts", "return sub acct information also"),
-	add_parse(BOOL16, without_parent_info, "without_parent_info", "don't give me parent id/name"),
-	add_parse(BOOL16, without_parent_limits, "without_parent_limits", "don't give me limits from parents"),
 };
 #undef add_parse
 
@@ -9816,6 +9872,7 @@ static const parser_t parsers[] = {
 	addpc(NODE_SELECT_ALLOC_IDLE_CPUS, node_info_t, NEED_NONE, INT32, NULL),
 	addpc(NODE_SELECT_TRES_USED, node_info_t, NEED_NONE, STRING, NULL),
 	addpc(NODE_SELECT_TRES_WEIGHTED, node_info_t, NEED_NONE, DOUBLE, NULL),
+	addpca(PRIORITY_BY_PARTITION, PART_PRIO, slurm_job_info_t, NEED_NONE, NULL),
 	addpca(NODES, NODE, node_info_msg_t, NEED_NONE, NULL),
 	addpca(JOB_INFO_GRES_DETAIL, STRING, slurm_job_info_t, NEED_NONE, NULL),
 	addpca(JOB_RES_NODES, JOB_RES_NODE, JOB_RES_NODE_t, NEED_NONE, "Job resources for a node"),
@@ -9983,6 +10040,7 @@ static const parser_t parsers[] = {
 	addpap(STATS_MSG_RPC_USER, STATS_MSG_RPC_USER_t, NULL, NULL),
 	addpap(STATS_MSG_RPC_QUEUE, STATS_MSG_RPC_QUEUE_t, NULL, NULL),
 	addpap(STATS_MSG_RPC_DUMP, STATS_MSG_RPC_DUMP_t, NULL, NULL),
+	addpap(PART_PRIO, PART_PRIO_t, NULL, NULL),
 	addpap(JOB_STATE_RESP_JOB, job_state_response_job_t, NULL, NULL),
 	addpap(OPENAPI_JOB_STATE_QUERY, openapi_job_state_query_t, NULL, NULL),
 	addpap(KILL_JOBS_MSG, kill_jobs_msg_t, NEW_FUNC(KILL_JOBS_MSG), NULL),
@@ -10028,11 +10086,13 @@ static const parser_t parsers[] = {
 
 	/* Flag bit arrays */
 	addfa(ASSOC_FLAGS, slurmdb_assoc_flags_t),
+	addfa(ASSOC_CONDITION_FLAGS, uint32_t),
 	addfa(USER_FLAGS, uint32_t),
 	addfa(SLURMDB_JOB_FLAGS, uint32_t),
 	addfa(ACCOUNT_FLAGS, uint32_t),
 	addfa(WCKEY_FLAGS, uint32_t),
 	addfa(QOS_FLAGS, uint32_t),
+	addfa(QOS_CONDITION_FLAGS, uint16_t),
 	addfa(QOS_PREEMPT_MODES, uint16_t),
 	addfa(CLUSTER_REC_FLAGS, uint32_t),
 	addfa(NODE_STATES, uint32_t),

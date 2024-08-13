@@ -5114,6 +5114,7 @@ static void _set_tres_per_task_from_sibling_opt(slurm_opt_t *opt, int optval)
 
 	/*
 	 * Now we know that either tres-per-task is set by cli and the option
+	 * is set by env, or only tres-per-task is set either by cli or env.
 	 * Either way, set the option from tres-per-task.
 	 */
 	if (optval == LONG_OPT_GPUS_PER_TASK) {
@@ -5741,7 +5742,7 @@ extern job_desc_msg_t *slurm_opt_create_job_desc(slurm_opt_t *opt_local,
 	 * cluster. Validation is still performed on slurmctld.
 	 */
 	if (!opt_local->clusters) {
-		List tmp_gres_list = NULL;
+		list_t *tmp_gres_list = NULL;
 		gres_job_state_validate_t gres_js_val = {
 			.cpus_per_tres = job_desc->cpus_per_tres,
 			.mem_per_tres = job_desc->mem_per_tres,

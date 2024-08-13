@@ -121,8 +121,8 @@
 #define fd_set_blocking		slurm_fd_set_blocking
 #define fd_set_nonblocking	slurm_fd_set_nonblocking
 #define fd_get_socket_error	slurm_fd_get_socket_error
-#define send_fd_over_pipe	slurm_send_fd_over_pipe
-#define receive_fd_over_pipe	slurm_receive_fd_over_pipe
+#define send_fd_over_socket	slurm_send_fd_over_socket
+#define receive_fd_over_socket	slurm_receive_fd_over_socket
 #define rmdir_recursive		slurm_rmdir_recursive
 
 /* hostlist.[ch] functions */
@@ -304,6 +304,8 @@
 #define	unpackstr_xmalloc	slurm_unpackstr_xmalloc
 #define	unpackstr_xmalloc_escaped slurm_unpackstr_xmalloc_escaped
 #define	unpackstr_xmalloc_chooser slurm_unpackstr_xmalloc_chooser
+#define packstr_func slurm_packstr_func
+#define safe_unpackstr_func slurm_safe_unpackstr_func
 #define	packstr_array		slurm_packstr_array
 #define	unpackstr_array		slurm_unpackstr_array
 #define	packmem_array		slurm_packmem_array

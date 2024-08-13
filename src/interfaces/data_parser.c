@@ -51,6 +51,7 @@
 
 #define PARSE_MAJOR_TYPE "data_parser"
 #define PARSE_MAGIC 0x0ea0b1be
+#define LATEST_PLUGIN_NAME "latest"
 
 struct data_parser_s {
 	int magic;
@@ -241,6 +242,11 @@ static plugin_param_t *_parse_plugin_type(const char *plugin_type)
 			p->params = xstrdup(pl);
 		} else {
 			p->plugin_type = xstrdup(type);
+		}
+
+		if (!xstrcasecmp(p->plugin_type, LATEST_PLUGIN_NAME)) {
+			xfree(p->plugin_type);
+			p->plugin_type = xstrdup(SLURM_DATA_PARSER_VERSION);
 		}
 
 		log_flag(DATA, "%s: plugin=%s params=%s",
@@ -457,7 +463,7 @@ cleanup:
 		xfree(pparams);
 	}
 
-	if (plugins)
+	if (plugins && parsers)
 		for (int j = 0; j < plugins->count; j++)
 			FREE_NULL_DATA_PARSER(parsers[j]);
 	xfree(parsers);
@@ -595,12 +601,10 @@ extern int data_parser_g_assign(data_parser_t *parser,
 }
 
 extern openapi_resp_meta_t *data_parser_cli_meta(int argc, char **argv,
-						 const char *mime_type,
-						 const char *data_parser)
+						 const char *mime_type)
 {
 	openapi_resp_meta_t *meta = xmalloc_nz(sizeof(*meta));
 	int tty;
-	char *parser = NULL;
 	char **argvnt = NULL;
 
 	/* need a new array with a NULL terminator */
@@ -618,12 +622,9 @@ extern openapi_resp_meta_t *data_parser_cli_meta(int argc, char **argv,
 	else
 		tty = -1;
 
-	if (data_parser)
-		parser = xstrdup(data_parser);
-
 	*meta = (openapi_resp_meta_t) {
 		.plugin = {
-			.data_parser = parser,
+			.data_parser = NULL,
 			.accounting_storage =
 				slurm_conf.accounting_storage_type,
 		},
@@ -651,7 +652,7 @@ extern openapi_resp_meta_t *data_parser_cli_meta(int argc, char **argv,
 static void _plugrack_foreach_list(const char *full_type, const char *fq_path,
 				   const plugin_handle_t id, void *arg)
 {
-	info("%s", full_type);
+	dprintf(STDOUT_FILENO, "%s\n", full_type);
 }
 
 static bool _on_error(void *arg, data_parser_type_t type, int error_code,
@@ -762,7 +763,7 @@ extern int data_parser_dump_cli_stdout(data_parser_type_t type, void *obj,
 	char *out = NULL;
 
 	if (!xstrcasecmp(data_parser, "list")) {
-		info("Possible data_parser plugins:");
+		dprintf(STDERR_FILENO, "Possible data_parser plugins:\n");
 		parser = data_parser_g_new(NULL, NULL, NULL, NULL, NULL, NULL,
 					   NULL, NULL, "list",
 					   _plugrack_foreach_list, false);
@@ -781,9 +782,8 @@ extern int data_parser_dump_cli_stdout(data_parser_type_t type, void *obj,
 		data_parser_g_assign(parser, DATA_PARSER_ATTR_DBCONN_PTR,
 				     acct_db_conn);
 
-	if (!meta->plugin.data_parser)
-		meta->plugin.data_parser =
-			xstrdup(data_parser_get_plugin(parser));
+	xassert(!meta->plugin.data_parser);
+	meta->plugin.data_parser = xstrdup(data_parser_get_plugin(parser));
 
 	dresp = data_new();
 

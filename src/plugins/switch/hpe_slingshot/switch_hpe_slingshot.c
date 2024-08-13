@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 
 #include "src/common/slurm_xlator.h"
+#include "src/common/fd.h"
 #include "src/common/strlcpy.h"
 
 #include "src/slurmctld/slurmctld.h"
@@ -219,6 +220,10 @@ extern int switch_p_save(void)
 		goto error;
 	}
 
+	if (fsync_and_close(state_fd, "switch"))
+		goto error;
+	state_fd = -1;
+
 	/* Overwrite the current state file with rename */
 	if (rename(new_state_file, state_file) == -1) {
 		error("Couldn't rename %s to %s: %m", new_state_file,
@@ -227,14 +232,14 @@ extern int switch_p_save(void)
 	}
 
 	debug("State file %s saved", state_file);
-	close(state_fd);
 	FREE_NULL_BUFFER(state_buf);
 	xfree(new_state_file);
 	xfree(state_file);
 	return SLURM_SUCCESS;
 
 error:
-	close(state_fd);
+	if (state_fd)
+		close(state_fd);
 	FREE_NULL_BUFFER(state_buf);
 	unlink(new_state_file);
 	xfree(new_state_file);
@@ -721,7 +726,6 @@ static bool _unpack_comm_profile(slingshot_comm_profile_t *profile,
 				 buf_t *buffer)
 {
 	char *device_name;
-	uint32_t name_len;
 
 	safe_unpack32(&profile->svc_id, buffer);
 	safe_unpack16(&profile->vnis[0], buffer);
@@ -730,7 +734,7 @@ static bool _unpack_comm_profile(slingshot_comm_profile_t *profile,
 	safe_unpack16(&profile->vnis[3], buffer);
 	safe_unpack32(&profile->tcs, buffer);
 
-	safe_unpackstr_xmalloc(&device_name, &name_len, buffer);
+	safe_unpackstr(&device_name, buffer);
 	if (!device_name)
 		goto unpack_error;
 	strlcpy(profile->device_name, device_name,
@@ -746,12 +750,11 @@ unpack_error:
 static bool _unpack_hsn_nic(slingshot_hsn_nic_t *nic, buf_t *buffer)
 {
 	char *address, *device_name;
-	uint32_t name_len;
 
 	safe_unpack32(&nic->nodeidx, buffer);
 	safe_unpack32(&nic->address_type, buffer);
 
-	safe_unpackstr_xmalloc(&address, &name_len, buffer);
+	safe_unpackstr(&address, buffer);
 	if (!address)
 		goto unpack_error;
 	strlcpy(nic->address, address, sizeof(nic->address));
@@ -759,7 +762,7 @@ static bool _unpack_hsn_nic(slingshot_hsn_nic_t *nic, buf_t *buffer)
 
 	safe_unpack16(&nic->numa_node, buffer);
 
-	safe_unpackstr_xmalloc(&device_name, &name_len, buffer);
+	safe_unpackstr(&device_name, buffer);
 	if (!device_name)
 		goto unpack_error;
 	strlcpy(nic->device_name, device_name, sizeof(nic->device_name));
@@ -775,7 +778,6 @@ static bool _unpack_hwcoll(slingshot_hwcoll_t **hwcollp, buf_t *buffer)
 {
 	slingshot_hwcoll_t *hwcoll = NULL;
 	bool got_hwcoll = false;
-	uint32_t name_len;
 
 	*hwcollp = NULL;
 	/* Unpack a boolean to see if hwcoll is packed in the buffer */
@@ -786,11 +788,11 @@ static bool _unpack_hwcoll(slingshot_hwcoll_t **hwcollp, buf_t *buffer)
 		safe_unpack32(&hwcoll->job_id, buffer);
 		safe_unpack32(&hwcoll->step_id, buffer);
 
-		safe_unpackstr_xmalloc(&hwcoll->mcast_token, &name_len, buffer);
+		safe_unpackstr(&hwcoll->mcast_token, buffer);
 		if (!hwcoll->mcast_token)
 			goto unpack_error;
 
-		safe_unpackstr_xmalloc(&hwcoll->fm_url, &name_len, buffer);
+		safe_unpackstr(&hwcoll->fm_url, buffer);
 		if (!hwcoll->fm_url)
 			goto unpack_error;
 
@@ -1159,4 +1161,10 @@ extern void switch_p_job_complete(job_record_t *job_ptr)
 extern int switch_p_fs_init(stepd_step_rec_t *step)
 {
 	return SLURM_SUCCESS;
+}
+
+extern void switch_p_extern_stepinfo(switch_stepinfo_t **stepinfo,
+				     job_record_t *job_ptr)
+{
+	/* not supported */
 }

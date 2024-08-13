@@ -60,8 +60,9 @@
 #include "src/common/spank.h"
 #include "src/common/stepd_api.h"
 #include "src/common/xmalloc.h"
-#include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+
+#include "src/conmgr/conmgr.h"
 
 #include "src/interfaces/acct_gather_energy.h"
 #include "src/interfaces/acct_gather_profile.h"
@@ -103,15 +104,10 @@ static stepd_step_rec_t *_step_setup(slurm_addr_t *cli, slurm_msg_t *msg);
 static void _step_cleanup(stepd_step_rec_t *step, slurm_msg_t *msg, int rc);
 #endif
 static void _process_cmdline(int argc, char **argv);
+static void _run(conmgr_callback_args_t conmgr_args, void *arg);
 
 static pthread_mutex_t cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool cleanup = false;
-
-int slurmstepd_blocked_signals[] = {
-	SIGINT,  SIGTERM, SIGTSTP,
-	SIGQUIT, SIGPIPE, SIGUSR1,
-	SIGUSR2, SIGALRM, SIGHUP, 0
-};
 
 /* global variable */
 slurmd_conf_t * conf;
@@ -123,6 +119,16 @@ list_t *job_node_array = NULL;
 time_t last_job_update = 0;
 bool time_limit_thread_shutdown = false;
 pthread_t time_limit_thread_id = 0;
+
+typedef struct {
+	slurm_addr_t *cli;
+#define RUN_ARGS_MAGIC 0x0ee01aab
+	int magic; /* RUN_ARGS_MAGIC */
+	slurm_msg_t *msg;
+	int rc;
+	int argc;
+	char **argv;
+} run_args_t;
 
 static int _foreach_ret_data_info(void *x, void *arg)
 {
@@ -216,23 +222,8 @@ static int _foreach_job_node_array(void *x, void *arg)
 	node_record_t *job_node_ptr = x;
 	int *table_index = arg;
 
-	config_record_t *config_ptr;
-	config_ptr = create_config_record();
-	config_ptr->boards = job_node_ptr->boards;
-	config_ptr->core_spec_cnt = job_node_ptr->core_spec_cnt;
-	config_ptr->cores = job_node_ptr->cores;
-	config_ptr->cpu_spec_list = xstrdup(job_node_ptr->cpu_spec_list);
-	config_ptr->cpus = job_node_ptr->cpus;
-	config_ptr->feature = xstrdup(job_node_ptr->features);
-	config_ptr->gres = xstrdup(job_node_ptr->gres);
-	config_ptr->node_bitmap = bit_alloc(node_record_count);
-	config_ptr->nodes = xstrdup(job_node_ptr->name);
-	config_ptr->real_memory = job_node_ptr->real_memory;
-	config_ptr->res_cores_per_gpu = job_node_ptr->res_cores_per_gpu;
-	config_ptr->threads = job_node_ptr->threads;
-	config_ptr->tmp_disk = job_node_ptr->tmp_disk;
-	config_ptr->tot_sockets = job_node_ptr->tot_sockets;
-	config_ptr->weight = job_node_ptr->weight;
+	config_record_t *config_ptr =
+		config_record_from_node_record(job_node_ptr);
 
 	*table_index = bit_ffs_from_bit(job_step_ptr->node_bitmap, *table_index);
 
@@ -293,18 +284,66 @@ static void _init_stepd_stepmgr(void)
 			    NULL);
 }
 
-int
-main (int argc, char **argv)
+static void _on_sigint(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGINT. Shutting down.");
+	conmgr_request_shutdown();
+}
+
+static void _on_sigterm(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGTERM. Shutting down.");
+	conmgr_request_shutdown();
+}
+
+static void _on_sigquit(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGQUIT. Shutting down.");
+	conmgr_request_shutdown();
+}
+
+static void _on_sigtstp(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGTSTP. Ignoring");
+}
+
+static void _on_sighup(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGHUP. Ignoring");
+}
+
+static void _on_sigusr1(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGUSR1. Ignoring.");
+}
+
+static void _on_sigusr2(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGUSR2. Ignoring.");
+}
+
+static void _on_sigpipe(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	info("Caught SIGPIPE. Ignoring.");
+}
+
+static void _on_sigttin(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	debug("Caught SIGTTIN. Ignoring.");
+}
+
+extern int main(int argc, char **argv)
 {
 	log_options_t lopts = LOG_OPTS_INITIALIZER;
-	slurm_addr_t *cli;
-	slurm_msg_t *msg;
-	stepd_step_rec_t *step;
-	int rc = 0;
+	run_args_t args = {
+		.magic = RUN_ARGS_MAGIC,
+		.rc = SLURM_SUCCESS,
+		.argc = argc,
+		.argv = argv,
+	};
 
 	_process_cmdline(argc, argv);
 
-	xsignal_block(slurmstepd_blocked_signals);
 	conf = xmalloc(sizeof(*conf));
 	conf->argv = argv;
 	conf->argc = argc;
@@ -313,7 +352,41 @@ main (int argc, char **argv)
 	log_init(argv[0], lopts, LOG_DAEMON, NULL);
 
 	/* Receive job parameters from the slurmd */
-	_init_from_slurmd(STDIN_FILENO, argv, &cli, &msg);
+	_init_from_slurmd(STDIN_FILENO, argv, &args.cli, &args.msg);
+
+	conmgr_init(0, 0, (conmgr_callbacks_t) {0});
+
+	conmgr_add_work_signal(SIGINT, _on_sigint, NULL);
+	conmgr_add_work_signal(SIGTERM, _on_sigterm, NULL);
+	conmgr_add_work_signal(SIGQUIT, _on_sigquit, NULL);
+	conmgr_add_work_signal(SIGTSTP, _on_sigtstp, NULL);
+	conmgr_add_work_signal(SIGHUP, _on_sighup, NULL);
+	conmgr_add_work_signal(SIGUSR1, _on_sigusr1, NULL);
+	conmgr_add_work_signal(SIGUSR2, _on_sigusr2, NULL);
+	conmgr_add_work_signal(SIGPIPE, _on_sigpipe, NULL);
+	conmgr_add_work_signal(SIGTTIN, _on_sigttin, NULL);
+
+	conmgr_add_work_fifo(_run, &args);
+
+	conmgr_run(true);
+
+	conmgr_fini();
+
+	return args.rc;
+}
+
+static void _run(conmgr_callback_args_t conmgr_args, void *arg)
+{
+	run_args_t *args = arg;
+	int argc = args->argc;
+	char **argv = args->argv;
+	slurm_addr_t *cli = args->cli;
+	slurm_msg_t *msg = args->msg;
+	stepd_step_rec_t *step;
+	int rc = 0;
+	bool only_mem = true;
+
+	xassert(args->magic == RUN_ARGS_MAGIC);
 
 	if ((run_command_init(argc, argv, conf->stepd_loc) != SLURM_SUCCESS) &&
 	    conf->stepd_loc && conf->stepd_loc[0])
@@ -364,9 +437,9 @@ main (int argc, char **argv)
 	 * and blocks until the step is complete */
 	rc = job_manager(step);
 
-	return stepd_cleanup(msg, step, cli, rc, false);
+	only_mem = false;
 ending:
-	return stepd_cleanup(msg, step, cli, rc, true);
+	args->rc = stepd_cleanup(msg, step, cli, rc, only_mem);
 }
 
 extern int stepd_cleanup(slurm_msg_t *msg, stepd_step_rec_t *step,
@@ -464,6 +537,9 @@ done:
 	} else {
 		info("done with step");
 	}
+
+	conmgr_request_shutdown();
+
 	return rc;
 }
 
@@ -1080,25 +1156,13 @@ _step_cleanup(stepd_step_rec_t *step, slurm_msg_t *msg, int rc)
 			stepd_step_rec_destroy(step);
 	}
 
-	if (msg) {
-		/*
-		 * The message cannot be freed until the jobstep is complete
-		 * because the job struct has pointers into the msg, such
-		 * as the switch jobinfo pointer.
-		 */
-		switch(msg->msg_type) {
-		case REQUEST_BATCH_JOB_LAUNCH:
-			slurm_free_job_launch_msg(msg->data);
-			break;
-		case REQUEST_LAUNCH_TASKS:
-			slurm_free_launch_tasks_request_msg(msg->data);
-			break;
-		default:
-			fatal("handle_launch_message: Unrecognized launch RPC");
-			break;
-		}
-		xfree(msg);
-	}
+	/*
+	 * The message cannot be freed until the jobstep is complete
+	 * because the job struct has pointers into the msg, such
+	 * as the switch jobinfo pointer.
+	 */
+	slurm_free_msg(msg);
+
 	jobacctinfo_destroy(step_complete.jobacct);
 }
 #endif

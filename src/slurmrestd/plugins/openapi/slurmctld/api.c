@@ -101,7 +101,8 @@ static const char *tags[] = {
 	NULL
 };
 
-#define OP_FLAGS (OP_BIND_DATA_PARSER | OP_BIND_OPENAPI_RESP_FMT)
+#define OP_FLAGS (OP_BIND_DATA_PARSER | OP_BIND_OPENAPI_RESP_FMT | \
+		  OP_BIND_NO_SLURMDBD)
 
 const openapi_path_binding_t openapi_paths[] = {
 	{
@@ -254,7 +255,10 @@ const openapi_path_binding_t openapi_paths[] = {
 					.type = DATA_PARSER_OPENAPI_KILL_JOBS_RESP,
 					.description = "description of jobs to signal",
 				},
-				.query = DATA_PARSER_KILL_JOBS_MSG,
+				.body = {
+					.type = DATA_PARSER_KILL_JOBS_MSG,
+					.description = "Signal or cancel jobs",
+				},
 			},
 			{0}
 		},
@@ -335,6 +339,19 @@ const openapi_path_binding_t openapi_paths[] = {
 					.description = "node(s) information",
 				},
 				.query = DATA_PARSER_OPENAPI_NODES_QUERY,
+			},
+			{
+				.method = HTTP_REQUEST_POST,
+				.tags = tags,
+				.summary = "batch update node(s)",
+				.response = {
+					.type = DATA_PARSER_OPENAPI_RESP,
+					.description = "batch node update request result",
+				},
+				.body = {
+					.type = DATA_PARSER_UPDATE_NODE_MSG,
+					.description = "Nodelist update description",
+				}
 			},
 			{0}
 		},

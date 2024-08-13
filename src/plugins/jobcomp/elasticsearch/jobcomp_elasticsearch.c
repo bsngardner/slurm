@@ -133,7 +133,7 @@ static pthread_mutex_t location_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t save_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t pend_jobs_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t job_handler_thread;
-static List jobslist = NULL;
+static list_t *jobslist = NULL;
 static bool thread_shutdown = false;
 
 /* Load jobcomp data from save state file */
@@ -141,7 +141,7 @@ static int _load_pending_jobs(void)
 {
 	int i, rc = SLURM_SUCCESS;
 	char *job_data = NULL;
-	uint32_t job_cnt = 0, tmp32 = 0;
+	uint32_t job_cnt = 0;
 	buf_t *buffer = NULL;
 	struct job_node *jnode;
 
@@ -154,7 +154,7 @@ static int _load_pending_jobs(void)
 
 	safe_unpack32(&job_cnt, buffer);
 	for (i = 0; i < job_cnt; i++) {
-		safe_unpackstr_xmalloc(&job_data, &tmp32, buffer);
+		safe_unpackstr(&job_data, buffer);
 		jnode = xmalloc(sizeof(struct job_node));
 		jnode->serialized_job = job_data;
 		list_enqueue(jobslist, jnode);
@@ -458,10 +458,10 @@ extern int jobcomp_p_set_location(void)
 
 /*
  * get info from the database
- * in/out job_list List of job_rec_t *
- * note List needs to be freed when called
+ * in/out job_list list of job_rec_t *
+ * note list needs to be freed when called
  */
-extern List jobcomp_p_get_jobs(slurmdb_job_cond_t *job_cond)
+extern list_t *jobcomp_p_get_jobs(slurmdb_job_cond_t *job_cond)
 {
 	debug("%s function is not implemented", __func__);
 	return NULL;

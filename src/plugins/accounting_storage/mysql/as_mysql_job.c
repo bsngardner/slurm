@@ -218,7 +218,7 @@ static uint32_t _get_wckeyid(mysql_conn_t *mysql_conn, char **name,
 		if (assoc_mgr_fill_in_wckey(mysql_conn, &wckey_rec,
 					    ACCOUNTING_ENFORCE_WCKEYS,
 					    NULL, false) != SLURM_SUCCESS) {
-			List wckey_list = NULL;
+			list_t *wckey_list = NULL;
 			slurmdb_wckey_rec_t *wckey_ptr = NULL;
 			/* we have already checked to make
 			   sure this was the slurm user before
@@ -336,7 +336,6 @@ extern int as_mysql_job_start(mysql_conn_t *mysql_conn, job_record_t *job_ptr)
 	char *nodes = NULL, *jname = NULL;
 	char *partition = NULL;
 	char *query = NULL;
-	int reinit = 0;
 	time_t begin_time, check_time, start_time, submit_time;
 	uint32_t wckeyid = 0;
 	uint32_t job_state;
@@ -731,17 +730,14 @@ no_rollup_change:
 				   job_ptr->licenses);
 
 		DB_DEBUG(DB_JOB, mysql_conn->conn, "query\n%s", query);
-	try_again:
+
 		if (!(job_ptr->db_index = mysql_db_insert_ret_id(
 			      mysql_conn, query))) {
-			if (!reinit) {
-				error("%s: It looks like the storage has gone away trying to reconnect",
-				      __func__);
-				/* reconnect */
-				check_connection(mysql_conn);
-				reinit = 1;
-				goto try_again;
-			} else
+			rc = errno;
+			if ((rc == CR_SERVER_GONE_ERROR) ||
+			    (rc == CR_SERVER_LOST))
+				rc = ESLURM_DB_CONNECTION;
+			else
 				rc = SLURM_ERROR;
 		}
 	} else {
@@ -886,20 +882,20 @@ extern int as_mysql_job_heavy(mysql_conn_t *mysql_conn, job_record_t *job_ptr)
 	return rc;
 }
 
-extern List as_mysql_modify_job(mysql_conn_t *mysql_conn, uint32_t uid,
-				slurmdb_job_cond_t *job_cond,
-				slurmdb_job_rec_t *job)
+extern list_t *as_mysql_modify_job(mysql_conn_t *mysql_conn, uint32_t uid,
+				   slurmdb_job_cond_t *job_cond,
+				   slurmdb_job_rec_t *job)
 {
-	List ret_list = NULL;
+	list_t *ret_list = NULL;
 	int rc = SLURM_SUCCESS;
 	char *object = NULL;
 	char *vals = NULL, *cond_char = NULL;
 	time_t now = time(NULL);
 	char *user_name = NULL;
-	List job_list = NULL;
+	list_t *job_list = NULL;
 	slurmdb_job_rec_t *job_rec;
 	list_itr_t *itr;
-	List id_switch_list = NULL;
+	list_t *id_switch_list = NULL;
 	id_switch_t *id_switch;
 	bool is_admin;
 
@@ -1234,15 +1230,13 @@ extern int as_mysql_job_complete(mysql_conn_t *mysql_conn,
 			*/
 			char *comment = job_ptr->comment;
 			job_ptr->comment = NULL;
-			/* If we get an error with this just fall
-			 * through to avoid an infinite loop
-			 */
-			if (as_mysql_job_start(
-				    mysql_conn, job_ptr) == SLURM_ERROR) {
+
+			if ((rc = as_mysql_job_start(
+				     mysql_conn, job_ptr)) != SLURM_SUCCESS) {
 				job_ptr->comment = comment;
 				error("couldn't add job %u at job completion",
 				      job_ptr->job_id);
-				return SLURM_SUCCESS;
+				return rc;
 			}
 			job_ptr->comment = comment;
 		}
@@ -1404,14 +1398,13 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 		      _get_db_index(mysql_conn,
 				    submit_time,
 				    step_ptr->job_ptr->job_id))) {
-			/* If we get an error with this just fall
-			 * through to avoid an infinite loop
-			 */
-			if (as_mysql_job_start(mysql_conn, step_ptr->job_ptr)
-			    == SLURM_ERROR) {
+
+			if ((rc = as_mysql_job_start(
+				     mysql_conn,
+				     step_ptr->job_ptr)) != SLURM_SUCCESS) {
 				error("couldn't add job %u at step start",
 				      step_ptr->job_ptr->job_id);
-				return SLURM_SUCCESS;
+				return rc;
 			}
 		}
 	}
@@ -1553,15 +1546,13 @@ extern int as_mysql_step_complete(mysql_conn_t *mysql_conn,
 		      _get_db_index(mysql_conn,
 				    submit_time,
 				    step_ptr->job_ptr->job_id))) {
-			/* If we get an error with this just fall
-			 * through to avoid an infinite loop
-			 */
-			if (as_mysql_job_start(mysql_conn, step_ptr->job_ptr)
-			    == SLURM_ERROR) {
+			if ((rc = as_mysql_job_start(
+				     mysql_conn,
+				     step_ptr->job_ptr)) != SLURM_SUCCESS) {
 				error("couldn't add job %u "
 				      "at step completion",
 				      step_ptr->job_ptr->job_id);
-				return SLURM_SUCCESS;
+				return rc;
 			}
 		}
 	}
@@ -1773,14 +1764,12 @@ extern int as_mysql_suspend(mysql_conn_t *mysql_conn, uint64_t old_db_inx,
 		      _get_db_index(mysql_conn,
 				    submit_time,
 				    job_ptr->job_id))) {
-			/* If we get an error with this just fall
-			 * through to avoid an infinite loop
-			 */
-			if (as_mysql_job_start(
-				    mysql_conn, job_ptr) == SLURM_ERROR) {
+			if ((rc = as_mysql_job_start(
+				     mysql_conn,
+				     job_ptr)) != SLURM_SUCCESS) {
 				error("couldn't suspend job %u",
 				      job_ptr->job_id);
-				return SLURM_SUCCESS;
+				return rc;
 			}
 		}
 	}

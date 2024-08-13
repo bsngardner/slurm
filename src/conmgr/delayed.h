@@ -1,10 +1,7 @@
 /*****************************************************************************\
- *  jobacct_gather_cgroup.h - slurm job accounting gather plugin for cgroup.
+ *  delayed.h - Internal declarations for delayed work handlers
  *****************************************************************************
- *  Copyright (C) 2011 Bull.
- *  Written by Martin Perry, <martin.perry@bull.com>, who borrowed heavily
- *  from other parts of Slurm
- *  CODE-OCEC-09-009. All rights reserved.
+ *  Copyright (C) SchedMD LLC.
  *
  *  This file is part of Slurm, a resource management program.
  *  For details, see <https://slurm.schedmd.com/>.
@@ -34,18 +31,35 @@
  *  You should have received a copy of the GNU General Public License along
  *  with Slurm; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA.
- *
- *  This file is patterned after jobcomp_linux.c, written by Morris Jette and
- *  Copyright (C) 2002 The Regents of the University of California.
 \*****************************************************************************/
 
-#include "src/interfaces/jobacct_gather.h"
+#ifndef _CONMGR_DELAYED_H
+#define _CONMGR_DELAYED_H
 
-extern int jobacct_gather_cgroup_cpuacct_init(void);
-extern int jobacct_gather_cgroup_cpuacct_fini(void);
-extern int jobacct_gather_cgroup_cpuacct_attach_task(pid_t pid,
-						     jobacct_id_t *jobacct_id);
-extern int jobacct_gather_cgroup_memory_init(void);
-extern int jobacct_gather_cgroup_memory_fini(void);
-extern int jobacct_gather_cgroup_memory_attach_task(pid_t pid,
-						    jobacct_id_t *jobacct_id);
+#include "src/conmgr/conmgr.h"
+#include "src/conmgr/mgr.h"
+
+/*
+ * Set all time delayed work as cancelled and run queue to run
+ */
+extern void cancel_delayed_work(void);
+
+extern void init_delayed_work(void);
+extern void free_delayed_work(void);
+
+extern void on_signal_alarm(conmgr_callback_args_t conmgr_args, void *arg);
+
+/*
+ * Enqueue new delayed work
+ * Caller must hold mgr.mutex lock
+ */
+extern void add_work_delayed(work_t *work);
+
+/*
+ * Create string describing delayed work for logging
+ * IN work - delayed work to describe
+ * RET log string (caller must xfree())
+ */
+extern char *work_delayed_to_str(work_t *work);
+
+#endif /* _CONMGR_DELAYED_H */

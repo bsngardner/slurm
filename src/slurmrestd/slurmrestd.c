@@ -109,7 +109,7 @@ static int debug_increase = 0;
 /* detected run mode */
 static run_mode_t run_mode = { 0 };
 /* Listen string */
-static List socket_listen = NULL;
+static list_t *socket_listen = NULL;
 static char *slurm_conf_filename = NULL;
 /* Number of requested threads */
 static int thread_count = 20;
@@ -139,7 +139,7 @@ extern parsed_host_port_t *parse_host_port(const char *str);
 extern void free_parse_host_port(parsed_host_port_t *parsed);
 
 /* SIGPIPE handler - mostly a no-op */
-static void _sigpipe_handler(int signum)
+static void _sigpipe_handler(conmgr_callback_args_t conmgr_args, void *arg)
 {
 	debug5("%s: received SIGPIPE", __func__);
 }
@@ -592,34 +592,40 @@ static void _auth_plugrack_foreach(const char *full_type, const char *fq_path,
 static void _plugrack_foreach_list(const char *full_type, const char *fq_path,
 				   const plugin_handle_t id, void *arg)
 {
-	fprintf(stderr, "%s\n", full_type);
+	fprintf(stdout, "%s\n", full_type);
 }
 
-static void _on_signal_interrupt(conmgr_fd_t *con, conmgr_work_type_t type,
-				 conmgr_work_status_t status, const char *tag,
-				 void *arg)
+static void _on_signal_interrupt(conmgr_callback_args_t conmgr_args, void *arg)
 {
 	info("%s: caught SIGINT. Shutting down.", __func__);
+	conmgr_request_shutdown();
+}
+
+
+static void _inet_on_finish(conmgr_fd_t *con, void *ctxt)
+{
+	on_http_connection_finish(con, ctxt);
 	conmgr_request_shutdown();
 }
 
 int main(int argc, char **argv)
 {
 	int rc = SLURM_SUCCESS, parse_rc = SLURM_SUCCESS;
-	struct sigaction sigpipe_handler = { .sa_handler = _sigpipe_handler };
 	socket_listen = list_create(xfree_ptr);
 	conmgr_events_t conmgr_events = {
 		.on_data = parse_http,
 		.on_connection = _setup_http_context,
 		.on_finish = on_http_connection_finish,
 	};
+	static const conmgr_events_t inet_events = {
+		.on_data = parse_http,
+		.on_connection = _setup_http_context,
+		.on_finish = _inet_on_finish,
+	};
 	static const conmgr_callbacks_t callbacks = {
 		.parse = parse_host_port,
 		.free_parse = free_parse_host_port,
 	};
-
-	if (sigaction(SIGPIPE, &sigpipe_handler, NULL) == -1)
-		fatal("%s: unable to control SIGPIPE: %m", __func__);
 
 	_parse_env();
 	_parse_commandline(argc, argv);
@@ -646,8 +652,8 @@ int main(int argc, char **argv)
 	conmgr_init((run_mode.listen ? thread_count : CONMGR_THREAD_COUNT_MIN),
 		    max_connections, callbacks);
 
-	conmgr_add_signal_work(SIGINT, _on_signal_interrupt, NULL,
-			       "_on_signal_interrupt()");
+	conmgr_add_work_signal(SIGINT, _on_signal_interrupt, NULL);
+	conmgr_add_work_signal(SIGPIPE, _sigpipe_handler, NULL);
 
 	auth_rack = plugrack_create("rest_auth");
 	plugrack_read_dir(auth_rack, slurm_conf.plugindir);
@@ -742,8 +748,8 @@ int main(int argc, char **argv)
 
 	if (!run_mode.listen) {
 		if ((rc = conmgr_process_fd(CON_TYPE_RAW, STDIN_FILENO,
-					    STDOUT_FILENO, conmgr_events, NULL,
-					    0, operations_router)))
+					    STDOUT_FILENO, inet_events, NULL, 0,
+					    operations_router)))
 			fatal("%s: unable to process stdin: %s",
 			      __func__, slurm_strerror(rc));
 
@@ -752,8 +758,9 @@ int main(int argc, char **argv)
 	} else if (run_mode.listen) {
 		mode_t mask = umask(0);
 
-		if (conmgr_create_sockets(CON_TYPE_RAW, socket_listen,
-					  conmgr_events, operations_router))
+		if (conmgr_create_listen_sockets(CON_TYPE_RAW, socket_listen,
+						 conmgr_events,
+						 operations_router))
 			fatal("Unable to create sockets");
 
 		umask(mask);

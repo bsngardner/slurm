@@ -69,19 +69,6 @@ unpack_error:
 	return SLURM_ERROR;
 }
 
-static void _slurmdbd_packstr(void *str, uint16_t rpc_version, buf_t *buffer)
-{
-	packstr((char *)str, buffer);
-}
-
-static int _slurmdbd_unpackstr(void **str, uint16_t rpc_version, buf_t *buffer)
-{
-	safe_unpackstr((char **)str, buffer);
-	return SLURM_SUCCESS;
-unpack_error:
-	return SLURM_ERROR;
-}
-
 /****************************************************************************\
  * Pack and unpack data structures
 \****************************************************************************/
@@ -1194,6 +1181,8 @@ extern void slurmdbd_pack_usage_msg(dbd_usage_msg_t *msg, uint16_t rpc_version,
 	void (*my_rec) (void *object, uint16_t rpc_version, buf_t *buffer);
 
 	switch (type) {
+	case DBD_GET_QOS_USAGE:
+	case DBD_GOT_QOS_USAGE:
 	case DBD_GET_ASSOC_USAGE:
 	case DBD_GOT_ASSOC_USAGE:
 		my_rec = slurmdb_pack_assoc_rec;
@@ -1228,6 +1217,8 @@ extern int slurmdbd_unpack_usage_msg(dbd_usage_msg_t **msg,
 	*msg = msg_ptr;
 
 	switch (type) {
+	case DBD_GET_QOS_USAGE:
+	case DBD_GOT_QOS_USAGE:
 	case DBD_GET_ASSOC_USAGE:
 	case DBD_GOT_ASSOC_USAGE:
 		my_rec = slurmdb_unpack_assoc_rec;
@@ -1320,7 +1311,7 @@ extern void slurmdbd_pack_list_msg(dbd_list_msg_t *msg, uint16_t rpc_version,
 		my_function = slurmdb_pack_job_rec;
 		break;
 	case DBD_GOT_LIST:
-		my_function = _slurmdbd_packstr;
+		my_function = packstr_func;
 		break;
 	case DBD_ADD_QOS:
 	case DBD_GOT_QOS:
@@ -1421,7 +1412,7 @@ extern int slurmdbd_unpack_list_msg(dbd_list_msg_t **msg, uint16_t rpc_version,
 		my_destroy = slurmdb_destroy_job_rec;
 		break;
 	case DBD_GOT_LIST:
-		my_function = _slurmdbd_unpackstr;
+		my_function = safe_unpackstr_func;
 		my_destroy = xfree_ptr;
 		break;
 	case DBD_ADD_QOS:

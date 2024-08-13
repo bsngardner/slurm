@@ -644,6 +644,8 @@ extern int slurm_persist_conn_open(persist_conn_t *persist_conn)
 				      __func__);
 			}
 			fd_close(&persist_conn->fd);
+			if (!errno)
+				errno = SLURM_ERROR;
 			goto end_it;
 		}
 		memset(&msg, 0, sizeof(persist_msg_t));
@@ -754,6 +756,9 @@ extern int slurm_persist_conn_process_msg(persist_conn_t *persist_conn,
 				     * (done later in this
 				     * function). */
 
+	if (persist_msg->msg_type == REQUEST_PERSIST_INIT_TLS)
+		tls_mode = TLS_CONN_SERVER;
+
 	if (rc != SLURM_SUCCESS) {
 		comment = xstrdup_printf("Failed to unpack %s message",
 					 slurmdbd_msg_type_2_str(
@@ -762,15 +767,27 @@ extern int slurm_persist_conn_process_msg(persist_conn_t *persist_conn,
 		*out_buffer = slurm_persist_make_rc_msg(
 			persist_conn, rc, comment, persist_msg->msg_type);
 		xfree(comment);
+
+		/*
+		 * Need the tls_conn to send back the error message.
+		 * There is a chance that the persist_msg->msg_type might not
+		 * have been unpacked, in which case tls_mode could be
+		 * TLS_CONN_NULL when it should be TLS_CONN_SERVER.
+		 */
+		if (!persist_conn->tls_conn) {
+			persist_conn->tls_conn =
+				tls_g_create_conn(persist_conn->fd, tls_mode);
+			if (!persist_conn->tls_conn)
+				error("CONN:%u tls_g_create_conn() failed",
+				      persist_conn->fd);
+		}
+
 		return rc;
 	}
 
 	if ((persist_msg->msg_type == REQUEST_PERSIST_INIT) ||
 	    (persist_msg->msg_type == REQUEST_PERSIST_INIT_TLS))
 		init_msg = true;
-
-	if (persist_msg->msg_type == REQUEST_PERSIST_INIT_TLS)
-		tls_mode = TLS_CONN_SERVER;
 
 	if (first && !init_msg) {
 		comment = "Initial RPC not REQUEST_PERSIST_INIT";
@@ -1103,6 +1120,9 @@ extern int slurm_persist_msg_unpack(persist_conn_t *persist_conn,
 		resp_msg->data = msg.data;
 	}
 
+	if (rc != SLURM_SUCCESS)
+		return rc;
+
 	/* Here we transfer the auth_cred to the persist_conn just in case in the
 	 * future we need to use it in some way to verify things for messages
 	 * that don't have on that will follow on the connection.
@@ -1144,8 +1164,6 @@ extern void slurm_persist_pack_init_req_msg(persist_init_req_msg_t *msg,
 extern int slurm_persist_unpack_init_req_msg(persist_init_req_msg_t **msg,
 					     buf_t *buffer)
 {
-	uint32_t tmp32;
-
 	persist_init_req_msg_t *msg_ptr =
 		xmalloc(sizeof(persist_init_req_msg_t));
 
@@ -1154,7 +1172,7 @@ extern int slurm_persist_unpack_init_req_msg(persist_init_req_msg_t **msg,
 	safe_unpack16(&msg_ptr->version, buffer);
 
 	if (msg_ptr->version >= SLURM_MIN_PROTOCOL_VERSION) {
-		safe_unpackstr_xmalloc(&msg_ptr->cluster_name, &tmp32, buffer);
+		safe_unpackstr(&msg_ptr->cluster_name, buffer);
 		safe_unpack16(&msg_ptr->persist_type, buffer);
 		safe_unpack16(&msg_ptr->port, buffer);
 	} else {
@@ -1198,14 +1216,12 @@ extern int slurm_persist_unpack_rc_msg(persist_rc_msg_t **msg,
 				       buf_t *buffer,
 				       uint16_t protocol_version)
 {
-	uint32_t uint32_tmp;
-
 	persist_rc_msg_t *msg_ptr = xmalloc(sizeof(persist_rc_msg_t));
 
 	*msg = msg_ptr;
 
 	if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
-		safe_unpackstr_xmalloc(&msg_ptr->comment, &uint32_tmp, buffer);
+		safe_unpackstr(&msg_ptr->comment, buffer);
 		safe_unpack16(&msg_ptr->flags, buffer);
 		safe_unpack32(&msg_ptr->rc, buffer);
 		safe_unpack16(&msg_ptr->ret_info, buffer);

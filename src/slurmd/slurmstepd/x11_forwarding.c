@@ -56,7 +56,6 @@
 #include "src/common/uid.h"
 #include "src/common/x11_util.h"
 #include "src/common/xmalloc.h"
-#include "src/common/xsignal.h"
 #include "src/common/xstring.h"
 
 #include "src/slurmd/slurmstepd/slurmstepd.h"
@@ -68,7 +67,7 @@ static uid_t job_uid;
 static bool local_xauthority = false;
 static char hostname[HOST_NAME_MAX] = {0};
 
-static eio_handle_t *eio_handle;
+static eio_handle_t *eio_handle = NULL;
 
 /* Target salloc/srun host/port */
 static slurm_addr_t alloc_node;
@@ -149,6 +148,9 @@ static int _x11_socket_read(eio_obj_t *obj, list_t *objs)
 
 	slurm_free_msg_members(&resp);
 
+	net_set_nodelay(*local);
+	net_set_nodelay(*remote);
+
 	/* setup eio to handle both sides of the connection now */
 	e1 = eio_obj_create(*local, &half_duplex_ops, remote);
 	e2 = eio_obj_create(*remote, &half_duplex_ops, local);
@@ -174,7 +176,8 @@ extern int shutdown_x11_forward(stepd_step_rec_t *step)
 	int rc = SLURM_SUCCESS;
 
 	debug("x11 forwarding shutdown in progress");
-	eio_signal_shutdown(eio_handle);
+	if (eio_handle)
+		eio_signal_shutdown(eio_handle);
 
 	if (step->x11_xauthority) {
 		if (local_xauthority) {

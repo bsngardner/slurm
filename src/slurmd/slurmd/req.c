@@ -1039,7 +1039,7 @@ _forkexec_slurmstepd(uint16_t type, void *req, slurm_addr_t *cli,
 		 */
 		if ((to_stepd[0] != conf->lfd)
 		    && (to_slurmd[1] != conf->lfd))
-			close(conf->lfd);
+			fd_close(&conf->lfd);
 
 		if (close(to_stepd[1]) < 0)
 			error("close write to_stepd in grandchild: %m");
@@ -1908,7 +1908,7 @@ static int _open_as_other(char *path_name, int flags, int mode, uint32_t jobid,
 		close(pipe[0]);
 		(void) waitpid(child, &rc, 0);
 		if (WIFEXITED(rc) && (WEXITSTATUS(rc) == 0) && !make_dir)
-			*fd = receive_fd_over_pipe(pipe[1]);
+			*fd = receive_fd_over_socket(pipe[1]);
 		exit_status = WEXITSTATUS(rc);
 		close(pipe[1]);
 		return exit_status;
@@ -1978,7 +1978,7 @@ static int _open_as_other(char *path_name, int flags, int mode, uint32_t jobid,
 		      __func__, uid, path_name, errno);
 		_exit(errno);
 	}
-	send_fd_over_pipe(pipe[0], *fd);
+	send_fd_over_socket(pipe[0], *fd);
 	close(*fd);
 	_exit(SLURM_SUCCESS);
 }
@@ -2025,7 +2025,7 @@ static int _connect_as_other(char *sock_name, uid_t uid, gid_t gid, int *fd)
 		close(pipe[0]);
 		(void) waitpid(child, &rc, 0);
 		if (WIFEXITED(rc) && (WEXITSTATUS(rc) == 0))
-			*fd = receive_fd_over_pipe(pipe[1]);
+			*fd = receive_fd_over_socket(pipe[1]);
 		exit_status = WEXITSTATUS(rc);
 		close(pipe[1]);
 		return exit_status;
@@ -2061,7 +2061,7 @@ static int _connect_as_other(char *sock_name, uid_t uid, gid_t gid, int *fd)
 		       __func__, sock_name);
 		_exit(errno);
 	}
-	send_fd_over_pipe(pipe[0], *fd);
+	send_fd_over_socket(pipe[0], *fd);
 	close(*fd);
 	_exit(SLURM_SUCCESS);
 }
@@ -2603,7 +2603,7 @@ static void _rpc_batch_job(slurm_msg_t *msg)
 	 * Just reply now and send a separate kill job request if the
 	 * prolog or launch fail. */
 	replied = true;
-	if (slurm_send_rc_msg(msg, rc) < 1) {
+	if (slurm_send_rc_msg(msg, rc)) {
 		/* The slurmctld is no longer waiting for a reply.
 		 * This typically indicates that the slurmd was
 		 * blocked from memory and/or CPUs and the slurmctld
@@ -2734,7 +2734,7 @@ static void _rpc_batch_job(slurm_msg_t *msg)
 
 done:
 	if (!replied) {
-		if (slurm_send_rc_msg(msg, rc) < 1) {
+		if (slurm_send_rc_msg(msg, rc)) {
 			/* The slurmctld is no longer waiting for a reply.
 			 * This typically indicates that the slurmd was
 			 * blocked from memory and/or CPUs and the slurmctld
@@ -3085,7 +3085,7 @@ _rpc_reboot(slurm_msg_t *msg)
 			 * least offline this node until someone intervenes.
 			 */
 			if (cfg->conf_flags & CONF_FLAG_SHR) {
-				slurmd_shutdown(SIGTERM);
+				slurmd_shutdown();
 			}
 			slurm_conf_unlock();
 		} else {

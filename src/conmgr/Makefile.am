@@ -1,7 +1,6 @@
 # Makefile for conmgr library
 
 AUTOMAKE_OPTIONS = foreign
-CLEANFILES = core.*
 
 AM_CPPFLAGS = -I$(top_srcdir)
 
@@ -13,14 +12,19 @@ libconmgr_la_SOURCES = \
 	conmgr.c \
 	conmgr.h \
 	delayed.c \
+	delayed.h \
+	events.c \
+	events.h \
 	io.c \
 	mgr.h \
+	poll.c \
+	poll.h \
 	rpc.c \
 	signals.c \
+	signals.h \
 	watch.c \
 	work.c \
-	workq.c \
-	workq.h
+	workers.c
 
 libconmgr_la_LDFLAGS = $(LIB_LDFLAGS) -module --export-dynamic
 

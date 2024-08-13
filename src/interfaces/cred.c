@@ -50,7 +50,6 @@
 #include "src/common/bitstring.h"
 #include "src/common/group_cache.h"
 #include "src/common/identity.h"
-#include "src/common/io_hdr.h"
 #include "src/common/job_resources.h"
 #include "src/common/list.h"
 #include "src/common/log.h"
@@ -66,6 +65,7 @@
 #include "src/common/xstring.h"
 #include "src/interfaces/cred.h"
 #include "src/interfaces/gres.h"
+#include "src/interfaces/switch.h"
 
 typedef struct {
 	slurm_cred_t *(*cred_create)	(slurm_cred_arg_t *cred_arg,
@@ -283,6 +283,8 @@ extern void slurm_cred_free_args(slurm_cred_arg_t *arg)
 	xfree(arg->job_std_out);
 	xfree(arg->step_mem_alloc);
 	xfree(arg->step_mem_alloc_rep_count);
+
+	switch_g_free_stepinfo(arg->switch_step);
 
 	xfree(arg);
 }

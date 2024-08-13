@@ -224,7 +224,6 @@ static void _pack_cgroup_conf(buf_t *buffer)
 
 static int _unpack_cgroup_conf(buf_t *buffer)
 {
-	uint32_t uint32_tmp = 0;
 	bool tmpbool = false;
 	/*
 	 * No protocol version needed, at the time of writing we are only
@@ -238,11 +237,9 @@ static int _unpack_cgroup_conf(buf_t *buffer)
 
 	_clear_slurm_cgroup_conf();
 
-	safe_unpackstr_xmalloc(&slurm_cgroup_conf.cgroup_mountpoint,
-			       &uint32_tmp, buffer);
+	safe_unpackstr(&slurm_cgroup_conf.cgroup_mountpoint, buffer);
 
-	safe_unpackstr_xmalloc(&slurm_cgroup_conf.cgroup_prepend,
-			       &uint32_tmp, buffer);
+	safe_unpackstr(&slurm_cgroup_conf.cgroup_prepend, buffer);
 
 	safe_unpackbool(&slurm_cgroup_conf.constrain_cores, buffer);
 
@@ -258,8 +255,7 @@ static int _unpack_cgroup_conf(buf_t *buffer)
 	safe_unpack64(&slurm_cgroup_conf.memory_swappiness, buffer);
 
 	safe_unpackbool(&slurm_cgroup_conf.constrain_devices, buffer);
-	safe_unpackstr_xmalloc(&slurm_cgroup_conf.cgroup_plugin,
-			       &uint32_tmp, buffer);
+	safe_unpackstr(&slurm_cgroup_conf.cgroup_plugin, buffer);
 
 	safe_unpackbool(&slurm_cgroup_conf.ignore_systemd, buffer);
 	safe_unpackbool(&slurm_cgroup_conf.ignore_systemd_on_failure, buffer);
@@ -549,7 +545,7 @@ extern void cgroup_init_limits(cgroup_limits_t *limits)
  *      cgroup.conf  file and return a key pair <name,value> ordered list.
  * RET List with cgroup.conf <name,value> pairs if no error, NULL otherwise.
  */
-extern List cgroup_get_conf_list(void)
+extern list_t *cgroup_get_conf_list(void)
 {
 	list_t *cgroup_conf_l;
 	cgroup_conf_t *cg_conf = &slurm_cgroup_conf;

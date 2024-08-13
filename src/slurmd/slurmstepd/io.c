@@ -70,13 +70,28 @@
 #include "src/common/read_config.h"
 #include "src/common/write_labelled_message.h"
 #include "src/common/xmalloc.h"
-#include "src/common/xsignal.h"
 #include "src/common/xstring.h"
 
 #include "src/slurmd/common/fname.h"
 #include "src/slurmd/slurmd/slurmd.h"
 #include "src/slurmd/slurmstepd/io.h"
 #include "src/slurmd/slurmstepd/slurmstepd.h"
+
+/*
+ * The message cache uses up free message buffers, so STDIO_MAX_MSG_CACHE
+ * must be a number smaller than STDIO_MAX_FREE_BUF.
+ */
+#define STDIO_MAX_FREE_BUF 1024
+#define STDIO_MAX_MSG_CACHE 128
+
+struct io_buf {
+	int ref_count;
+	uint32_t length;
+	void *data;
+};
+
+static struct io_buf *_alloc_io_buf(void);
+static void _free_io_buf(struct io_buf *buf);
 
 /**********************************************************************
  * IO client socket declarations
@@ -320,9 +335,9 @@ static int _client_read(eio_obj_t *obj, list_t *objs)
 			return SLURM_SUCCESS;
 		}
 		debug5("client->header.length = %u", client->header.length);
-		if (client->header.length > MAX_MSG_LEN)
+		if (client->header.length > SLURM_IO_MAX_MSG_LEN)
 			error("Message length of %u exceeds maximum of %u",
-			      client->header.length, MAX_MSG_LEN);
+			      client->header.length, SLURM_IO_MAX_MSG_LEN);
 		client->in_remaining = client->header.length;
 		client->in_msg->length = client->header.length;
 	}
@@ -526,8 +541,8 @@ static int _local_file_write(eio_obj_t *obj, list_t *objs)
 		if (client->out_msg == NULL) {
 			return SLURM_SUCCESS;
 		}
-		client->out_remaining = client->out_msg->length -
-					io_hdr_packed_size();
+		client->out_remaining =
+			(client->out_msg->length - IO_HDR_PACKET_BYTES);
 	}
 
 	/*
@@ -707,7 +722,8 @@ _create_task_out_eio(int fd, uint16_t type,
 	out->gtaskid = task->gtid;
 	out->ltaskid = task->id;
 	out->step = step;
-	out->buf = cbuf_create(MAX_MSG_LEN, MAX_MSG_LEN*4);
+	out->buf = cbuf_create(SLURM_IO_MAX_MSG_LEN,
+			       (SLURM_IO_MAX_MSG_LEN * 4));
 	out->eof = false;
 	out->eof_msg_sent = false;
 	if (cbuf_opt_set(out->buf, CBUF_OPT_OVERWRITE, CBUF_NO_DROP) == -1)
@@ -1260,13 +1276,13 @@ _build_connection_okay_message(stepd_step_rec_t *step)
 	header.gtaskid = 0;  /* Unused */
 	header.length = 0;
 
-	packbuf = create_buf(msg->data, io_hdr_packed_size());
+	packbuf = create_buf(msg->data, IO_HDR_PACKET_BYTES);
 	if (!packbuf) {
 		fatal("Failure to allocate memory for a message header");
 		return msg;	/* Fix for CLANG false positive error */
 	}
 	io_hdr_pack(&header, packbuf);
-	msg->length = io_hdr_packed_size();
+	msg->length = IO_HDR_PACKET_BYTES;
 	msg->ref_count = 0; /* make certain it is initialized */
 
 	/* free packbuf, but not the memory to which it points */
@@ -1461,17 +1477,7 @@ static void *
 _io_thr(void *arg)
 {
 	stepd_step_rec_t *step = (stepd_step_rec_t *) arg;
-	sigset_t set;
 	int rc;
-
-	/* A SIGHUP signal signals a reattach to the mgr thread.  We need
-	 * to block SIGHUP from being delivered to this thread so the mgr
-	 * thread will see the signal.
-	 */
-	sigemptyset(&set);
-	sigaddset(&set, SIGHUP);
-	sigaddset(&set, SIGPIPE);
-	pthread_sigmask(SIG_BLOCK, &set, NULL);
 
 	debug("IO handler started pid=%lu", (unsigned long) getpid());
 	rc = eio_handle_mainloop(step->eio);
@@ -1735,7 +1741,7 @@ _send_eof_msg(struct task_read_info *out)
 		   a poll returns POLLHUP on the incoming task pipe,
 		   put there are no outgoing message buffers available,
 		   the slurmstepd will start spinning. */
-		msg = alloc_io_buf();
+		msg = _alloc_io_buf();
 	}
 
 	header.type = out->type;
@@ -1743,14 +1749,14 @@ _send_eof_msg(struct task_read_info *out)
 	header.gtaskid = out->gtaskid;
 	header.length = 0; /* eof */
 
-	packbuf = create_buf(msg->data, io_hdr_packed_size());
+	packbuf = create_buf(msg->data, IO_HDR_PACKET_BYTES);
 	if (!packbuf) {
 		fatal("Failure to allocate memory for a message header");
 		return;	/* Fix for CLANG false positive error */
 	}
 
 	io_hdr_pack(&header, packbuf);
-	msg->length = io_hdr_packed_size() + header.length;
+	msg->length = IO_HDR_PACKET_BYTES + header.length;
 	msg->ref_count = 0; /* make certain it is initialized */
 
 	/* free packbuf, but not the memory to which it points */
@@ -1770,7 +1776,7 @@ _send_eof_msg(struct task_read_info *out)
 	}
 	list_iterator_destroy(clients);
 	if (msg->ref_count == 0)
-		free_io_buf(msg);
+		_free_io_buf(msg);
 
 	debug4("Leaving  _send_eof_msg");
 }
@@ -1797,13 +1803,13 @@ static struct io_buf *_task_build_message(struct task_read_info *out,
 		return NULL;
 	}
 
-	ptr = msg->data + io_hdr_packed_size();
+	ptr = msg->data + IO_HDR_PACKET_BYTES;
 
 	if (buffered_stdio) {
-		avail = cbuf_peek_line(cbuf, ptr, MAX_MSG_LEN, 1);
-		if (avail >= MAX_MSG_LEN)
+		avail = cbuf_peek_line(cbuf, ptr, SLURM_IO_MAX_MSG_LEN, 1);
+		if (avail >= SLURM_IO_MAX_MSG_LEN)
 			must_truncate = true;
-		else if (avail == 0 && cbuf_used(cbuf) >= MAX_MSG_LEN)
+		else if (avail == 0 && cbuf_used(cbuf) >= SLURM_IO_MAX_MSG_LEN)
 			must_truncate = true;
 	}
 
@@ -1818,9 +1824,9 @@ static struct io_buf *_task_build_message(struct task_read_info *out,
 	 * Hence the "|| out->eof".
 	 */
 	if (must_truncate || !buffered_stdio || out->eof) {
-		n = cbuf_read(cbuf, ptr, MAX_MSG_LEN);
+		n = cbuf_read(cbuf, ptr, SLURM_IO_MAX_MSG_LEN);
 	} else {
-		n = cbuf_read_line(cbuf, ptr, MAX_MSG_LEN, -1);
+		n = cbuf_read_line(cbuf, ptr, SLURM_IO_MAX_MSG_LEN, -1);
 		if (n == 0) {
 			debug5("  partial line in buffer, ignoring");
 			debug4("Leaving  _task_build_message");
@@ -1835,13 +1841,13 @@ static struct io_buf *_task_build_message(struct task_read_info *out,
 	header.length = n;
 
 	debug4("%s: header.length = %d", __func__, n);
-	packbuf = create_buf(msg->data, io_hdr_packed_size());
+	packbuf = create_buf(msg->data, IO_HDR_PACKET_BYTES);
 	if (!packbuf) {
 		fatal("Failure to allocate memory for a message header");
 		return msg;	/* Fix for CLANG false positive error */
 	}
 	io_hdr_pack(&header, packbuf);
-	msg->length = io_hdr_packed_size() + header.length;
+	msg->length = IO_HDR_PACKET_BYTES + header.length;
 	msg->ref_count = 0; /* make certain it is initialized */
 
 	/* free packbuf, but not the memory to which it points */
@@ -1852,8 +1858,7 @@ static struct io_buf *_task_build_message(struct task_read_info *out,
 	return msg;
 }
 
-struct io_buf *
-alloc_io_buf(void)
+static struct io_buf *_alloc_io_buf(void)
 {
 	struct io_buf *buf = xmalloc(sizeof(*buf));
 
@@ -1861,13 +1866,12 @@ alloc_io_buf(void)
 	buf->length = 0;
 	/* The following "+ 1" is just temporary so I can stick a \0 at
 	   the end and do a printf of the data pointer */
-	buf->data = xmalloc(MAX_MSG_LEN + io_hdr_packed_size() + 1);
+	buf->data = xmalloc(SLURM_IO_MAX_MSG_LEN + IO_HDR_PACKET_BYTES + 1);
 
 	return buf;
 }
 
-void
-free_io_buf(struct io_buf *buf)
+static void _free_io_buf(struct io_buf *buf)
 {
 	if (buf) {
 		if (buf->data)
@@ -1885,7 +1889,7 @@ _incoming_buf_free(stepd_step_rec_t *step)
 	if (list_count(step->free_incoming) > 0) {
 		return true;
 	} else if (step->incoming_count < STDIO_MAX_FREE_BUF) {
-		buf = alloc_io_buf();
+		buf = _alloc_io_buf();
 		list_enqueue(step->free_incoming, buf);
 		step->incoming_count++;
 		return true;
@@ -1902,7 +1906,7 @@ _outgoing_buf_free(stepd_step_rec_t *step)
 	if (list_count(step->free_outgoing) > 0) {
 		return true;
 	} else if (step->outgoing_count < STDIO_MAX_FREE_BUF) {
-		buf = alloc_io_buf();
+		buf = _alloc_io_buf();
 		list_enqueue(step->free_outgoing, buf);
 		step->outgoing_count++;
 		return true;

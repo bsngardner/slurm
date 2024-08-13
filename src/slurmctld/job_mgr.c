@@ -3314,7 +3314,7 @@ extern void rehash_jobs(void)
  *		individial task of the job array.
  *		Set the job's array_task_id to the task to be split out.
  * RET - The new job record, which is the new META job record. */
-extern job_record_t *job_array_split(job_record_t *job_ptr)
+extern job_record_t *job_array_split(job_record_t *job_ptr, bool list_add)
 {
 	job_record_t *job_ptr_pend = NULL;
 	job_details_t *job_details, *details_new, *save_details;
@@ -3324,7 +3324,7 @@ extern job_record_t *job_array_split(job_record_t *job_ptr)
 	list_t *save_step_list = NULL;
 	int i;
 
-	job_ptr_pend = _create_job_record(0, true);
+	job_ptr_pend = _create_job_record(0, list_add);
 
 	_remove_job_hash(job_ptr, JOB_HASH_JOB);
 	job_ptr_pend->job_id = job_ptr->job_id;
@@ -3388,7 +3388,7 @@ extern job_record_t *job_array_split(job_record_t *job_ptr)
 				job_ptr_pend->array_task_id = NO_VAL;
 			} else {
 				job_ptr_pend->array_task_id = i;
-				job_array_post_sched(job_ptr_pend);
+				job_array_post_sched(job_ptr_pend, true);
 			}
 		} else {
 			/* Still have tasks left to split off in the array */
@@ -6838,6 +6838,7 @@ extern int job_limits_check(job_record_t **job_pptr, bool check_min_time)
 		job_desc.ntasks_per_tres = detail_ptr->ntasks_per_tres;
 		job_desc.pn_min_cpus = detail_ptr->orig_pn_min_cpus;
 		job_desc.job_id = job_ptr->job_id;
+		job_desc.bitflags = job_ptr->bit_flags;
 		if (!_valid_pn_min_mem(&job_desc, part_ptr)) {
 			/* debug2 message already logged inside the function. */
 			fail_reason = WAIT_PN_MEM_LIMIT;
@@ -8591,6 +8592,7 @@ static bool _valid_pn_min_mem(job_desc_msg_t *job_desc_msg,
 	uint64_t job_mem_limit = job_desc_msg->pn_min_memory;
 	uint64_t sys_mem_limit;
 	uint16_t cpus_per_node;
+	bool cpus_set = job_desc_msg->bitflags & JOB_CPUS_SET;
 
 	if (part_ptr && part_ptr->max_mem_per_cpu)
 		sys_mem_limit = part_ptr->max_mem_per_cpu;
@@ -8601,7 +8603,7 @@ static bool _valid_pn_min_mem(job_desc_msg_t *job_desc_msg,
 		return true;
 
 	if ((job_mem_limit & MEM_PER_CPU) && (sys_mem_limit & MEM_PER_CPU)) {
-		uint64_t mem_ratio;
+		uint64_t mem_ratio, cpu_factor;
 		job_mem_limit &= (~MEM_PER_CPU);
 		sys_mem_limit &= (~MEM_PER_CPU);
 		if (job_mem_limit <= sys_mem_limit)
@@ -8609,10 +8611,12 @@ static bool _valid_pn_min_mem(job_desc_msg_t *job_desc_msg,
 		mem_ratio = ROUNDUP(job_mem_limit, sys_mem_limit);
 		debug("JobId=%u: increasing cpus_per_task and decreasing mem_per_cpu by factor of %"PRIu64" based upon mem_per_cpu limits",
 		      job_desc_msg->job_id, mem_ratio);
-		if (job_desc_msg->cpus_per_task == NO_VAL16)
+		if (!cpus_set || (job_desc_msg->cpus_per_task == NO_VAL16)) {
 			job_desc_msg->cpus_per_task = mem_ratio;
+			cpu_factor = 1;
+		}
 		else
-			job_desc_msg->cpus_per_task *= mem_ratio;
+			cpu_factor = mem_ratio;
 		job_desc_msg->pn_min_memory = ((job_mem_limit + mem_ratio - 1) /
 					       mem_ratio) | MEM_PER_CPU;
 		if ((job_desc_msg->num_tasks != NO_VAL) &&
@@ -8620,14 +8624,17 @@ static bool _valid_pn_min_mem(job_desc_msg_t *job_desc_msg,
 		    (job_desc_msg->min_cpus  != NO_VAL)) {
 			job_desc_msg->min_cpus =
 				job_desc_msg->num_tasks *
-				job_desc_msg->cpus_per_task;
+				job_desc_msg->cpus_per_task *
+				cpu_factor;
 
 			if ((job_desc_msg->max_cpus != NO_VAL) &&
 			    (job_desc_msg->max_cpus < job_desc_msg->min_cpus)) {
 				job_desc_msg->max_cpus = job_desc_msg->min_cpus;
 			}
 		} else {
-			job_desc_msg->pn_min_cpus = job_desc_msg->cpus_per_task;
+			job_desc_msg->pn_min_cpus =
+				job_desc_msg->cpus_per_task *
+				cpu_factor;
 		}
 		return true;
 	}
@@ -13742,6 +13749,7 @@ static int _update_job(job_record_t *job_ptr, job_desc_msg_t *job_desc,
 				 * dependency locally, so we still need to
 				 * do these things.
 				 */
+				xfree(job_ptr->details->orig_dependency);
 				job_ptr->details->orig_dependency =
 					xstrdup(job_ptr->details->dependency);
 				sched_info("%s: setting dependency to %s for %pJ",
@@ -14420,7 +14428,7 @@ extern int update_job_str(slurm_msg_t *msg, uid_t uid)
 				if (!bit_test(tmp_bitmap, i))
 					continue;
 				job_ptr->array_task_id = i;
-				new_job_ptr = job_array_split(job_ptr);
+				new_job_ptr = job_array_split(job_ptr, true);
 
 				/*
 				 * The array_recs structure is moved to the
@@ -14466,13 +14474,10 @@ extern int update_job_str(slurm_msg_t *msg, uid_t uid)
 reply:
 	if ((rc != ESLURM_JOB_SETTING_DB_INX) && (msg->conn_fd >= 0)) {
 		if (resp_array) {
-			slurm_msg_t resp_msg;
 			job_array_resp_msg_t *resp_array_msg =
 				_resp_array_xlate(resp_array, job_id);
-			response_init(&resp_msg, msg,
-				      RESPONSE_JOB_ARRAY_ERRORS,
-				      resp_array_msg);
-			slurm_send_node_msg(msg->conn_fd, &resp_msg);
+			(void) send_msg_response(msg, RESPONSE_JOB_ARRAY_ERRORS,
+						 resp_array_msg);
 			slurm_free_job_array_resp(resp_array_msg);
 		} else {
 			slurm_send_rc_err_msg(msg, rc, err_msg);
@@ -17081,11 +17086,9 @@ extern int job_requeue2(uid_t uid, requeue_msg_t *req_ptr, slurm_msg_t *msg,
 reply:
 	if (msg) {
 		if (resp_array) {
-			slurm_msg_t resp_msg;
 			resp_array_msg = _resp_array_xlate(resp_array, job_id);
-			response_init(&resp_msg, msg, RESPONSE_JOB_ARRAY_ERRORS,
-				      resp_array_msg);
-			slurm_send_node_msg(msg->conn_fd, &resp_msg);
+			(void) send_msg_response(msg, RESPONSE_JOB_ARRAY_ERRORS,
+						 resp_array_msg);
 			slurm_free_job_array_resp(resp_array_msg);
 		} else {
 			slurm_send_rc_msg(msg, rc);
@@ -18049,7 +18052,7 @@ extern void job_array_pre_sched(job_record_t *job_ptr)
 }
 
 /* If this is a job array meta-job, clean up after scheduling attempt */
-extern job_record_t *job_array_post_sched(job_record_t *job_ptr)
+extern job_record_t *job_array_post_sched(job_record_t *job_ptr, bool list_add)
 {
 	job_record_t *new_job_ptr = NULL;
 
@@ -18089,7 +18092,7 @@ extern job_record_t *job_array_post_sched(job_record_t *job_ptr)
 		}
 		new_job_ptr = job_ptr;
 	} else {
-		new_job_ptr = job_array_split(job_ptr);
+		new_job_ptr = job_array_split(job_ptr, list_add);
 		job_state_set(new_job_ptr, JOB_PENDING);
 		new_job_ptr->start_time = (time_t) 0;
 		/*
@@ -18531,11 +18534,20 @@ extern job_record_t *job_mgr_copy_resv_desc_to_job_record(
 {
 	job_record_t *job_ptr;
 	job_details_t *detail_ptr;
+	part_record_t *part_ptr = NULL;
 
 	job_ptr = _create_job_record(1, false);
 	detail_ptr = job_ptr->details;
 
 	job_ptr->partition = xstrdup(resv_desc_ptr->partition);
+
+	if (job_ptr->partition)
+		part_ptr = find_part_record(job_ptr->partition);
+	if (part_ptr && part_ptr->def_mem_per_cpu)
+		detail_ptr->pn_min_memory = part_ptr->def_mem_per_cpu;
+	else
+		detail_ptr->pn_min_memory = slurm_conf.def_mem_per_cpu;
+
 	job_ptr->time_limit = resv_desc_ptr->duration;
 
 	detail_ptr->begin_time = resv_desc_ptr->start_time;
@@ -18571,6 +18583,8 @@ extern job_record_t *job_mgr_copy_resv_desc_to_job_record(
 
 		detail_ptr->num_tasks = detail_ptr->min_cpus =
 			resv_desc_ptr->core_cnt;
+		if (detail_ptr->min_cpus == NO_VAL)
+			detail_ptr->min_cpus = detail_ptr->min_nodes;
 	} else {
 		detail_ptr->num_tasks = detail_ptr->min_cpus =
 			detail_ptr->min_nodes;
@@ -18580,7 +18594,13 @@ extern job_record_t *job_mgr_copy_resv_desc_to_job_record(
 	detail_ptr->cpus_per_task = 1;
 	detail_ptr->orig_min_cpus = detail_ptr->min_cpus;
 	detail_ptr->orig_max_cpus = detail_ptr->max_cpus = NO_VAL;
-	detail_ptr->orig_pn_min_cpus = detail_ptr->pn_min_cpus = 1;
+	if ((resv_desc_ptr->flags & RESERVE_TRES_PER_NODE) &&
+	    (resv_desc_ptr->core_cnt != NO_VAL) &&
+	    (resv_desc_ptr->node_cnt != NO_VAL)) {
+		detail_ptr->orig_pn_min_cpus = detail_ptr->pn_min_cpus =
+			resv_desc_ptr->core_cnt / resv_desc_ptr->node_cnt;
+	} else
+		detail_ptr->orig_pn_min_cpus = detail_ptr->pn_min_cpus = 1;
 	detail_ptr->features = xstrdup(resv_desc_ptr->features);
 
 	if (build_feature_list(job_ptr, false, true)) {
@@ -18614,7 +18634,6 @@ extern job_record_t *job_mgr_copy_resv_desc_to_job_record(
 			.gres_list = &job_ptr->gres_list_req,
 		};
 
-		detail_ptr->ntasks_per_node = NO_VAL16;
 		detail_ptr->mc_ptr->ntasks_per_socket = NO_VAL16;
 		detail_ptr->mc_ptr->sockets_per_node = NO_VAL16;
 		detail_ptr->orig_cpus_per_task = NO_VAL16;
@@ -18636,8 +18655,12 @@ extern job_record_t *job_mgr_copy_resv_desc_to_job_record(
 			detail_ptr->num_tasks = 0;
 		if (detail_ptr->min_cpus == NO_VAL)
 			detail_ptr->min_cpus = 1;
-		if (detail_ptr->ntasks_per_node == NO_VAL16)
+
+		if (resv_desc_ptr->flags & RESERVE_TRES_PER_NODE)
+			detail_ptr->ntasks_per_node = detail_ptr->pn_min_cpus;
+		else if (detail_ptr->ntasks_per_node == NO_VAL16)
 			detail_ptr->ntasks_per_node = 0;
+
 		if (detail_ptr->mc_ptr->ntasks_per_socket == NO_VAL16)
 			detail_ptr->mc_ptr->ntasks_per_socket = INFINITE16;
 		if (job_ptr->gres_list_req)
